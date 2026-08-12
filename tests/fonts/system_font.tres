@@ -1,0 +1,6 @@
+[gd_resource type="SystemFont" format=3]
+
+[resource]
+font_names = PackedStringArray("sans-serif")
+font_italic = false
+font_weight = 400

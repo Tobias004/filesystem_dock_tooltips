@@ -1,200 +1,89 @@
-# FileSystem Dock Documentation Tooltips for .gd Scripts
+# FileSystem Dock Tooltips
 
-Godot editor plugin for Godot 4.5 and newer. It extends the standard tooltip for GDScript files in the FileSystem dock with the script's `class_name` and class documentation.
+Godot editor plugin for Godot 4.5 and newer. It extends FileSystem dock
+tooltips with GDScript documentation and generated visual previews for
+resource types where a larger hover preview provides additional information.
+
+## Version 2.0 preview modules
+
+Each feature is implemented as a separate `EditorResourceTooltipPlugin`
+module and registered independently.
+
+Supported modules:
+
+- GDScript class documentation
+- 3D material preview (`BaseMaterial3D`, spatial `ShaderMaterial`)
+- Mesh preview with automatic AABB-based camera fitting
+- Font sample preview
+- `.gdshader` preview for `spatial` and `canvas_item` shaders
+- `SpriteFrames` contact-sheet preview
+- Theme preview using representative Godot controls
+- StyleBox preview
+- `Curve`, `Curve2D` and `Curve3D` previews
+- Gradient preview
+- Environment preview using fixed reference objects
+- Sky preview
+
+Texture and audio previews are intentionally not duplicated because Godot
+already provides dedicated FileSystem tooltip previews for them.
+
+PackedScene previews are intentionally not generated automatically. Rendering
+arbitrary scenes on hover would require instantiation and could execute
+`@tool` code. A future user-defined scene screenshot feature can remain
+separate from this release.
+
+## Modular configuration
+
+All modules can be enabled or disabled in:
+
+`tooltip_settings.gd`
+
+For example:
+
+```gdscript
+const ENABLE_MESH_PREVIEW := true
+const ENABLE_THEME_PREVIEW := false
+```
+
+`plugin.gd` loads enabled module scripts dynamically. A disabled module script
+is not loaded at all, which makes experimental features easy to isolate.
+
+## Debug messages
+
+Debug output is also controlled only by a source-code constant:
+
+```gdscript
+const DEBUG_MESSAGES := false
+```
+
+The release configuration sets it to `false`.
+
+No Project Setting is created.
+
+## Robust fallback behavior
+
+A module adds content only when:
+
+- the hovered resource type is supported,
+- the resource exists and can be loaded,
+- required data is present,
+- the preview can be built with sensible bounds.
+
+Otherwise it returns Godot's standard tooltip unchanged.
+
+The add-on does not intentionally emit its own warnings/errors when
+`DEBUG_MESSAGES` is `false`.
+
+Engine-level diagnostics cannot be suppressed from GDScript. In particular,
+an invalid user shader can still make Godot report a shader compile error when
+that shader is loaded. The shader module reads `shader_type` from the source
+first and does not load unsupported particle/fog/texture-blit shaders.
 
 ## Installation
 
-Copy `addons/filesystem_script_doc_tooltips` into the root of the Godot project, then enable **FileSystem Script Documentation Tooltips** under **Project > Project Settings > Plugins**.
+Copy:
 
-The ZIP archive is structured so that it can be extracted directly into the project root.
+`addons/filesystem_dock_tooltips`
 
-## Supported documentation styles
-
-Godot's documented style places script documentation after `class_name` and `extends`:
-
-```gdscript
-class_name TooltipTestComponent
-extends Node
-
-## Demonstrates the tooltip documentation features.
-##
-## [b]Bold text[/b]
-## [i]Italic text[/i]
-## [color=orange]Colored text[/color]
-```
-
-Documentation directly above `class_name` is also supported:
-
-```gdscript
-## Alternative documentation placement above [code]class_name[/code].
-##
-## This class can be used to test the second supported placement.
-class_name TooltipTestResource
-extends Resource
-```
-
-Only `.gd` files with a `class_name` and a non-empty `##` documentation block are extended.
-
-## Source-like layout
-
-The tooltip keeps the layout of the documentation comment:
-
-```gdscript
-## Parameters:
-##     speed       Movement speed
-##     direction   Normalized movement direction
-##     enabled     Enables or disables movement
-##
-## This    line    contains    repeated    spaces.
-```
-
-The plugin removes only:
-
-* indentation before `##`,
-* the `##` prefix,
-* one conventional space immediately after `##`.
-
-Line breaks, blank lines, leading indentation, repeated spaces, tabs, and trailing spaces are otherwise retained. The editor's code font is used. Tooltip width follows the longest source line up to a maximum width; longer lines wrap as a fallback.
-
-## Documentation markup
-
-The tooltip uses `RichTextLabel` and supports its common BBCode formatting:
-
-```gdscript
-## [b]Bold text[/b]
-## [i]Italic text[/i]
-## [u]Underlined text[/u]
-## [s]Strikethrough text[/s]
-## [color=orange]Colored text[/color]
-## [code]inline_code()[/code]
-## [url=https://godotengine.org]Godot website[/url]
-## First line[br]Second line
-```
-
-Godot-specific references such as `[Node2D]`, `[method Node.add_child]`, and `[member speed]` are shown in code formatting:
-
-```gdscript
-## Godot references:
-##     Class:    [Node2D]
-##     Method:   [method Node.add_child]
-##     Member:   [member speed]
-```
-
-`[codeblock]` and `[kbd]` are approximated using `[code]` because `RichTextLabel` does not provide those exact tags:
-
-```gdscript
-## [codeblock]var value := 42[/codeblock]
-## Press [kbd]Ctrl+S[/kbd] to save.
-```
-
-## Test scripts
-
-The following scripts can be used to test the supported documentation positions, formatting tags, source layout, width calculation, and fallback wrapping.
-
-### Documentation after `class_name` and `extends`
-
-```gdscript
-class_name TooltipTestComponent
-extends Node
-
-## Demonstrates all supported tooltip features.
-##
-## [b]Bold text[/b]
-## [i]Italic text[/i]
-## [u]Underlined text[/u]
-## [s]Strikethrough text[/s]
-## [color=orange]Colored text[/color]
-## [code]inline_code()[/code]
-## [url=https://godotengine.org]Godot website[/url]
-## First line[br]Second line
-##
-## Godot references:
-##     Class:    [Node2D]
-##     Method:   [method Node.add_child]
-##     Member:   [member speed]
-##
-## Approximated tags:
-##     [codeblock]var value := 42[/codeblock]
-##     Press [kbd]Ctrl+S[/kbd] to save.
-##
-## Parameters:
-##     speed       Movement speed
-##     direction   Normalized movement direction
-##     enabled     Enables or disables movement
-##
-## Source layout:
-##         This line has leading indentation.
-##     This    line    contains    repeated    spaces.
-##	This line begins with a tab.
-##
-## Blank lines above and below should remain visible.
-##
-## A very long line for testing the maximum tooltip width and fallback wrapping behavior when the source line is wider than the configured maximum width of the tooltip control.
-##
-## Trailing spaces follow this line.    
-## End of documentation.
-
-@export var speed: float = 200.0
-@export var direction := Vector2.RIGHT
-@export var enabled := true
-
-
-func _process(delta: float) -> void:
-	if enabled and owner is Node2D:
-		owner.position += direction.normalized() * speed * delta
-```
-
-### Documentation before `class_name`
-
-```gdscript
-## Alternative documentation placement above [code]class_name[/code].
-##
-## This class tests the same formatting in a shorter documentation block.
-##
-## [b]Formatting:[/b] [i]italic[/i], [u]underline[/u], [s]strike[/s]
-## [color=cyan]Colored text[/color]
-## [url=https://docs.godotengine.org]Godot documentation[/url]
-##
-## References:
-##     [Resource]
-##     [method Object.get]
-##     [member resource_name]
-##
-## Alignment:
-##     name        Description
-##     count       Number of entries
-##     active      Current state
-##
-## Repeated  spaces  should  remain.
-##     Leading indentation should remain.
-##
-## [codeblock]
-## var example := TooltipTestResource.new()
-## example.count = 10
-## [/codeblock]
-##
-## Keyboard shortcut: [kbd]Ctrl+Shift+S[/kbd]
-class_name TooltipTestResource
-extends Resource
-
-@export var name: String
-@export var count: int
-@export var active: bool
-```
-
-### Negative test
-
-A script without `class_name` or without a `##` documentation block must retain the standard FileSystem tooltip:
-
-```gdscript
-extends Node
-
-# This ordinary comment must not appear as class documentation.
-
-func test() -> void:
-	pass
-```
-
-## Implementation
-
-The plugin uses the official `EditorResourceTooltipPlugin` API registered through `FileSystemDock`. It reads the hovered script as text and does not load or instantiate the script resource.
+into the root of a Godot project and enable **FileSystem Dock Tooltips** under
+**Project > Project Settings > Plugins**.

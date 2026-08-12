@@ -1,31 +1,22 @@
-# FileSystem Script Documentation Tooltips
+# FileSystem Dock Tooltips 2.0
 
-A Godot editor plugin that extends FileSystem tooltips for GDScript files
-with `class_name` information and rendered `##` documentation.
+Development and validation project for the Godot editor add-on.
 
-![Tooltip preview](4_asset_store/screenshot.webp)
+Version 2.0 adds modular generated FileSystem tooltip previews for materials,
+meshes, fonts, shaders, SpriteFrames, themes, StyleBoxes, curves, gradients,
+environments and skies while retaining the original GDScript documentation
+tooltip.
 
-## Features
+This project is configured exactly like the release add-on:
 
-- Displays the script's `class_name`
-- Renders GDScript documentation comments
-- Supports common BBCode-style documentation formatting
-- Works directly in the Godot FileSystem dock
-- No runtime dependency
-- No network communication
+```gdscript
+const DEBUG_MESSAGES := false
+```
 
-## Installation
+All optional modules are enabled. Individual modules can be disabled in:
 
-### Godot Asset Library
+`addons/filesystem_dock_tooltips/tooltip_settings.gd`
 
-Install the plugin through the Godot Asset Library.
+Test resources are documented in:
 
-### Manual installation
-
-Copy:
-
-`addons/filesystem_dock_tooltips`
-
-into your Godot project and enable the plugin under:
-
-`Project Settings > Plugins`
+`tests/TEST_ASSETS.md`

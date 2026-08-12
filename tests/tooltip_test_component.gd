@@ -17,10 +17,6 @@ extends Node
 ##     Method:   [method Node.add_child]
 ##     Member:   [member speed]
 ##
-## Approximated tags:
-##     [codeblock]var value := 42[/codeblock]
-##     Press [kbd]Ctrl+S[/kbd] to save.
-##
 ## Parameters:
 ##     speed       Movement speed
 ##     direction   Normalized movement direction
@@ -31,12 +27,7 @@ extends Node
 ##     This    line    contains    repeated    spaces.
 ##	This line begins with a tab.
 ##
-## Blank lines above and below should remain visible.
-##
 ## A very long line for testing the maximum tooltip width and fallback wrapping behavior when the source line is wider than the configured maximum width of the tooltip control.
-##
-## Trailing spaces follow this line.    
-## End of documentation.
 
 @export var speed: float = 200.0
 @export var direction := Vector2.RIGHT
@@ -46,7 +37,3 @@ extends Node
 func _process(delta: float) -> void:
 	if enabled and owner is Node2D:
 		owner.position += direction.normalized() * speed * delta
-		
-# This ordinary comment must not appear as class documentation.
-func test() -> void:
-	pass

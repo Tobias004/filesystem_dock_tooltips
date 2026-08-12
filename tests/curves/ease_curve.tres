@@ -1,0 +1,9 @@
+[gd_resource type="Curve" format=3]
+
+[resource]
+min_value = -0.25
+max_value = 1.25
+_data = [Vector2(0, 0), 0.0, 2.4, 0, 0, Vector2(0.38, 0.78), 1.2, 1.2, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+point_1/position = Vector2(0.38, 0.78)
+point_2/position = Vector2(1, 1)

@@ -1,0 +1,41 @@
+[gd_resource type="SpriteFrames" load_steps=7 format=3]
+
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_0.png" id="1_f"]
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_1.png" id="2_f"]
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_2.png" id="3_f"]
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_3.png" id="4_f"]
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_4.png" id="5_f"]
+[ext_resource type="Texture2D" path="res://tests/sprite_frames/frame_5.png" id="6_f"]
+
+[resource]
+animations = [{
+"frames": [
+{
+"duration": 1.0,
+"texture": ExtResource("1_f")
+},
+{
+"duration": 1.0,
+"texture": ExtResource("2_f")
+},
+{
+"duration": 1.0,
+"texture": ExtResource("3_f")
+},
+{
+"duration": 1.0,
+"texture": ExtResource("4_f")
+},
+{
+"duration": 1.0,
+"texture": ExtResource("5_f")
+},
+{
+"duration": 1.0,
+"texture": ExtResource("6_f")
+}
+],
+"loop": true,
+"name": &"default",
+"speed": 8.0
+}]
