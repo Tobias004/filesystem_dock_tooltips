@@ -1,0 +1,117 @@
+name: Bug report
+description: Report a reproducible problem with FileSystem Dock Tooltips.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem.
+
+        Please keep the report as short as possible while including enough information to reproduce it.
+        The add-on does not automatically send project data or logs.
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: This is filled automatically when the form is opened from Godot's Project > Tools menu.
+      placeholder: "e.g. 2.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: godot_version
+    attributes:
+      label: Godot version
+      description: This is filled automatically when the form is opened from Godot's Project > Tools menu.
+      placeholder: "e.g. 4.7.1.stable"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected feature
+      options:
+        - GDScript documentation tooltip
+        - Material preview
+        - Mesh preview
+        - Font preview
+        - Shader preview
+        - SpriteFrames preview
+        - Theme preview
+        - StyleBox preview
+        - Curve preview
+        - Gradient preview
+        - Environment preview
+        - Sky preview
+        - Plugin activation / installation
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you were doing when it occurred.
+      placeholder: "Example: Hovering over ... shows ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: "Describe the expected behavior."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Please provide the shortest sequence that reproduces the problem.
+      placeholder: |
+        1. Open ...
+        2. Hover over ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug_output
+    attributes:
+      label: Debug output (optional)
+      description: |
+        If useful, temporarily set DEBUG_MESSAGES := true in
+        addons/filesystem_dock_tooltips/tooltip_settings.gd,
+        reproduce the problem, and paste the relevant Godot Output here.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information (optional)
+      description: Screenshots, small test resources, or other details can be added here.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the existing issues for the same problem.
+          required: true

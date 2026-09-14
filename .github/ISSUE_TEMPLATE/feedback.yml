@@ -1,0 +1,70 @@
+name: Feedback / feature request
+description: Suggest an improvement or a new feature for FileSystem Dock Tooltips.
+title: "[Feedback] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feedback is welcome. A short description of the use case is usually more useful than a long specification.
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: Filled automatically when opened from Godot's Project > Tools menu.
+      placeholder: "e.g. 2.0.0"
+    validations:
+      required: false
+
+  - type: input
+    id: godot_version
+    attributes:
+      label: Godot version
+      description: Filled automatically when opened from Godot's Project > Tools menu.
+      placeholder: "e.g. 4.7.1.stable"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - GDScript documentation
+        - Resource previews
+        - Performance
+        - User interface / workflow
+        - Compatibility
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What would you like to improve?
+      description: Describe the problem, limitation, or workflow that led to the idea.
+      placeholder: "It would be useful if ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested solution (optional)
+      description: If you already have an idea for how it could work, describe it here.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information (optional)
+      description: Screenshots, mockups, links, or examples can be added here.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the existing issues for a similar request.
+          required: true
