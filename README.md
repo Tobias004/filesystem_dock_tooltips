@@ -1,22 +1,19 @@
-# FileSystem Dock Tooltips 2.0
+# FileSystem Dock Tooltips
 
-Development and validation project for the Godot editor add-on.
+FileSystem Dock Tooltips is a Godot editor add-on for enhancing tooltips in the FileSystem dock.
 
-Version 2.0 adds modular generated FileSystem tooltip previews for materials,
-meshes, fonts, shaders, SpriteFrames, themes, StyleBoxes, curves, gradients,
-environments and skies while retaining the original GDScript documentation
-tooltip.
+For the current feature description, screenshots, compatibility information and installation details, please see the official Godot Asset Library page:
 
-This project is configured exactly like the release add-on:
+**[FileSystem Dock Tooltips on the Godot Asset Library](https://store.godotengine.org/asset/tobias-lawrenz/filesystem-dock-tooltips/)**
 
-```gdscript
-const DEBUG_MESSAGES := false
-```
+## Source code
 
-All optional modules are enabled. Individual modules can be disabled in:
+This repository contains the source code of the add-on.
 
-`addons/filesystem_dock_tooltips/tooltip_settings.gd`
+## Bug reports and feedback
 
-Test resources are documented in:
+If you encounter a bug or have feedback or a feature request, please use the GitHub issue tracker for this repository.
 
-`tests/TEST_ASSETS.md`
+## Releases
+
+For released versions of the add-on, see the GitHub Releases section or the Godot Asset Library page.

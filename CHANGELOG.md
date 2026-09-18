@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+ - Added feedback option via GitHub ( Project -> Tools -> FileSystem Dock Tooltips -> Feedback ).
+ - Added a settings dialog that allows specific tooltips to be disabled ( Project -> Tools -> FileSystem Dock Tooltips -> Settings... ).
+
 ## 2.0.0
 
 - Added central module enable/disable constants.

@@ -21,7 +21,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/filesystem_dock_tooltips/plugin.cfg")
+enabled=PackedStringArray("res://addons/filesystem_dock_tooltips/plugin.cfg", "res://addons/quill-ide/plugin.cfg")
 
 [physics]
 

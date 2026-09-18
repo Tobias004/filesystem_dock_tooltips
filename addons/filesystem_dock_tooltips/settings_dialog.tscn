@@ -1,0 +1,99 @@
+[gd_scene format=3 uid="uid://cs2gykw1q0i0e"]
+
+[ext_resource type="Script" uid="uid://o4xyir3fnhvn" path="res://addons/filesystem_dock_tooltips/settings_dialog.gd" id="1_settings"]
+
+[node name="SettingsDialog" type="AcceptDialog" unique_id=634273916]
+oversampling_override = 1.0
+title = "FileSystem Dock Tooltips Settings"
+initial_position = 1
+size = Vector2i(263, 559)
+visible = true
+max_size = Vector2i(0, 0)
+ok_button_text = "Close"
+script = ExtResource("1_settings")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=850475087]
+custom_minimum_size = Vector2(-1, -1)
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 255.0
+offset_bottom = 510.0
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1968420083]
+propagate_maximum_size = false
+layout_mode = 2
+
+[node name="lblDocumentation" type="Label" parent="MarginContainer/VBoxContainer" unique_id=1312796872]
+layout_mode = 2
+text = "Documentation"
+
+[node name="chkbGdscriptDoc" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=143135475]
+layout_mode = 2
+button_pressed = true
+text = "GDScript documentation"
+
+[node name="HSeparator2" type="HSeparator" parent="MarginContainer/VBoxContainer" unique_id=408054909]
+layout_mode = 2
+
+[node name="lblResourcePreviews" type="Label" parent="MarginContainer/VBoxContainer" unique_id=1368792307]
+layout_mode = 2
+text = "Resource previews"
+
+[node name="chkbMaterials" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=2093841366]
+layout_mode = 2
+button_pressed = true
+text = "Materials"
+
+[node name="chkbMeshes" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=661731725]
+layout_mode = 2
+button_pressed = true
+text = "Meshes"
+
+[node name="chkbFonts" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=781323083]
+layout_mode = 2
+button_pressed = true
+text = "Fonts"
+
+[node name="chkbShaders" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=1603330525]
+layout_mode = 2
+button_pressed = true
+text = "Shaders"
+
+[node name="chkbSpriteFrames" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=1825030007]
+layout_mode = 2
+button_pressed = true
+text = "SpriteFrames"
+
+[node name="chkbThemes" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=996775299]
+layout_mode = 2
+button_pressed = true
+text = "Themes"
+
+[node name="chkbStyleBoxes" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=196455542]
+layout_mode = 2
+button_pressed = true
+text = "StyleBoxes"
+
+[node name="chkbCurves" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=1625773356]
+layout_mode = 2
+button_pressed = true
+text = "Curves"
+
+[node name="chkbGradients" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=33914265]
+layout_mode = 2
+button_pressed = true
+text = "Gradients"
+
+[node name="chkbEnvironments" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=388397655]
+layout_mode = 2
+button_pressed = true
+text = "Environments"
+
+[node name="chkbSkies" type="CheckBox" parent="MarginContainer/VBoxContainer" unique_id=390280029]
+layout_mode = 2
+button_pressed = true
+text = "Skies"

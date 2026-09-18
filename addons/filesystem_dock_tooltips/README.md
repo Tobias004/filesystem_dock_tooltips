@@ -4,7 +4,7 @@ Godot editor plugin for Godot 4.5 and newer. It extends FileSystem dock
 tooltips with GDScript documentation and generated visual previews for
 resource types where a larger hover preview provides additional information.
 
-## Version 2.0 preview modules
+## Preview modules
 
 Each feature is implemented as a separate `EditorResourceTooltipPlugin`
 module and registered independently.
@@ -32,21 +32,14 @@ arbitrary scenes on hover would require instantiation and could execute
 `@tool` code. A future user-defined scene screenshot feature can remain
 separate from this release.
 
-## Modular configuration
+## Module settings
 
-All modules can be enabled or disabled in:
+Open **Project > Tools > FileSystem Dock Tooltips > Settings...** to enable or
+disable individual modules. Changes apply immediately.
 
-`tooltip_settings.gd`
-
-For example:
-
-```gdscript
-const ENABLE_MESH_PREVIEW := true
-const ENABLE_THEME_PREVIEW := false
-```
-
-`plugin.gd` loads enabled module scripts dynamically. A disabled module script
-is not loaded at all, which makes experimental features easy to isolate.
+All modules are enabled by default. The choices are stored per project in
+Godot editor metadata outside the project folder, so no Project Setting or
+project file is created. A disabled module script is not loaded.
 
 ## Debug messages
 
@@ -87,3 +80,14 @@ Copy:
 
 into the root of a Godot project and enable **FileSystem Dock Tooltips** under
 **Project > Project Settings > Plugins**.
+
+## Support and feedback
+
+Found a bug or have an idea?
+
+- [Report a bug](https://github.com/Tobias004/filesystem_dock_tooltips/issues/new?template=bug_report.yml)
+- [Send feedback / request a feature](https://github.com/Tobias004/filesystem_dock_tooltips/issues/new?template=feedback.yml)
+
+When the add-on is enabled, the same links are available from **Project > Tools** in Godot.
+
+See [SUPPORT.md](SUPPORT.md) for details and optional debug instructions.
