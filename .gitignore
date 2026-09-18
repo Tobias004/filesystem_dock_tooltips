@@ -1,5 +1,5 @@
-# Godot 4+ specific ignores
 .godot/
 /android/
 *.mp4
 addons/quill-ide/
+.vscode/
