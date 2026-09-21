@@ -1,11 +1,17 @@
 # Changelog
 
+## 2.1.1
+- Refactored the add-on architecture without changing tooltip behavior.
+- Reduced `plugin.gd` to the Godot `EditorPlugin` lifecycle and moved add-on orchestration into `filesystem_dock_tooltips.gd`.
+- Moved the GDScript documentation tooltip into `modules/script_documentation_tooltip.gd` alongside the other tooltip modules.
+- Added purpose and behavior comments to the refactored functions.
+- Kept the add-on compatible with Godot 4.5 and newer.
+
 ## 2.1.0
  - Added feedback option via GitHub ( Project -> Tools -> FileSystem Dock Tooltips -> Feedback ).
  - Added a settings dialog that allows specific tooltips to be disabled ( Project -> Tools -> FileSystem Dock Tooltips -> Settings... ).
 
 ## 2.0.0
-
 - Added central module enable/disable constants.
 - Added `DEBUG_MESSAGES` source-code constant; release default is `false`.
 - Added generated 3D previews for `BaseMaterial3D` and spatial `ShaderMaterial`.

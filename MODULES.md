@@ -4,7 +4,7 @@ Module switches are available under **Project > Tools > FileSystem Dock Tooltips
 
 | Setting | Module | Preview |
 | --- | --- | --- |
-| GDScript documentation | existing GDScript module | `class_name` + `##` documentation |
+| GDScript documentation | `script_documentation_tooltip.gd` | `class_name` + `##` documentation |
 | Materials | material | generated 3D sphere |
 | Meshes | mesh | generated 3D geometry, automatic camera fit |
 | Fonts | font | rendered text samples |
