@@ -1,0 +1,114 @@
+[b]GDScript documentation comments[/b]
+
+Godot documentation comments start with [code]##[/code]. Better Tooltips uses the same documentation markup described by Godot's class reference, and this help page is rendered by the same formatter as the tooltips themselves.
+
+[b]Script documentation[/b]
+
+Place the script description at the top of the script, after [code]class_name[/code] and [code]extends[/code] when they are present, and before member documentation.
+
+[codeblock lang=gdscript]
+class_name ExampleComponent
+extends Node
+
+## Controls an example component.
+##
+## Uses [Node] and calls [method Node.add_child].
+## Pass [param enabled] to change the active state.
+##
+## @tutorial(Documentation): https://docs.godotengine.org/
+[/codeblock]
+
+Ordinary wrapped documentation lines are joined with spaces. Use [code][lb]br[rb][/code] when a line break must be preserved.
+
+[b]Member documentation[/b]
+
+Godot expects member documentation immediately before the member, or before its annotations. Godot also accepts inline documentation comments for signals, enums and enum values, constants, variables, functions and inner classes.
+
+[codeblock lang=gdscript]
+## Speed used by the controller.
+@export
+var speed := 120.0
+
+signal changed ## Emitted after the value changes.
+const MAX_ITEMS := 32 ## Maximum number of items.
+
+func reset(): ## Restores the default state.
+    pass
+[/codeblock]
+
+Better Tooltips displays script/class documentation in the FileSystem dock. In the Code Editor, the add-on handles project documentation for the named script class and supported members such as functions, properties, signals, constants, enums and inner classes. It first checks the current unsaved script. When Godot's own symbol tooltip identifies another project [code]class_name[/code] as the owner, the add-on follows that owner back to its script so the same documentation is available at use sites such as [code]enemy.health[/code] and [code]enemy.damage()[/code].
+
+When Godot already displays the same project [code]##[/code] documentation, the default behavior is to replace only that description with the add-on renderer while retaining Godot's native title/signature. This keeps source line breaks, keeps the same formatting across supported editor tooltips and avoids the compact native project-documentation tooltip being clipped. Godot's own engine/API documentation remains native. If an override or inherited member resolves to distinct base-class help, the project documentation is added before that native description so both remain visible.
+
+[b]Optional local single-# comments[/b]
+
+For Code Editor class/member tooltips only, an ordinary contiguous [code]#[/code] comment block directly above a supported declaration can optionally be treated as local implementation documentation. This is useful when the comment should help while editing without becoming Godot API documentation.
+
+[codeblock lang=gdscript]
+# Creates the controller used by this concrete editor plugin.
+# The inherited lifecycle description remains visible below it.
+func _enter_tree() -> void:
+    pass
+[/codeblock]
+
+The Code Editor settings expose these choices separately: show Godot-style [code]##[/code] documentation, show ordinary single-[code]#[/code] blocks, and replace duplicate Godot-rendered project documentation with the add-on renderer. All three are enabled by default. Region directives are not interpreted as documentation. The same markup renderer is used for enabled single-[code]#[/code] blocks.
+
+[b]Documentation tags[/b]
+
+Use these tags at the beginning of a documentation line:
+[code]@tutorial: https://example.com[/code]
+[code]@tutorial(The Title): https://example.com[/code]
+[code]@deprecated[/code] or [code]@deprecated: Use [lb]AnotherClass[rb] instead.[/code]
+[code]@experimental[/code] or [code]@experimental: This API is unstable.[/code]
+
+[b]Code references[/b]
+
+[code][lb]Node[rb][/code] — class or type reference
+[code][lb]annotation @GDScript.@rpc[rb][/code] — annotation
+[code][lb]constant Color.RED[rb][/code] — constant
+[code][lb]enum Mesh.ArrayType[rb][/code] — enum
+[code][lb]member Node2D.scale[rb][/code] — property/member
+[code][lb]method Node.add_child[rb][/code] — method
+[code][lb]constructor Color.Color[rb][/code] — built-in constructor
+[code][lb]operator Color.operator *[rb][/code] — built-in operator
+[code][lb]signal Node.renamed[rb][/code] — signal
+[code][lb]theme_item Label.font[rb][/code] — theme item
+[code][lb]param child[rb][/code] — parameter name
+
+Rendered examples: [Node], [method Node.add_child], [member Node2D.scale], [constant Color.RED], [signal Node.renamed] and [param child]. References in this help dialog can be clicked to open Godot's built-in class reference.
+
+[b]Text formatting[/b]
+
+[code][lb]b[rb]bold[lb]/b[rb][/code] → [b]bold[/b]
+[code][lb]i[rb]italic[lb]/i[rb][/code] → [i]italic[/i]
+[code][lb]u[rb]underline[lb]/u[rb][/code] → [u]underline[/u]
+[code][lb]s[rb]strikethrough[lb]/s[rb][/code] → [s]strikethrough[/s]
+[code][lb]color=orange[rb]colored[lb]/color[rb][/code] → [color=orange]colored[/color]
+[code][lb]center[rb]centered[lb]/center[rb][/code] centers a paragraph.
+[code][lb]code[rb]true[lb]/code[rb][/code] → [code]true[/code]
+[code][lb]kbd[rb]Ctrl + C[lb]/kbd[rb][/code] → [kbd]Ctrl + C[/kbd]
+[code][lb]br[rb][/code] inserts a line break.
+[code][lb]lb[rb][/code] and [code][lb]rb[rb][/code] render literal [lb] and [rb].
+
+[b]Code blocks[/b]
+
+Use [code][lb]codeblock[rb]...[lb]/codeblock[rb][/code] for preformatted code. Supported language attributes follow Godot: [code]lang=text[/code], [code]lang=gdscript[/code], and [code]lang=csharp[/code]. GDScript blocks use the editor's syntax highlighting. C# is displayed as source text when a C# highlighter is unavailable.
+
+[codeblock lang=gdscript]
+func add_child_if_needed(child: Node) -> void:
+    if child.get_parent() == null:
+        add_child(child)
+[/codeblock]
+
+[b]Links, images and fonts[/b]
+
+[code][lb]url[rb]https://example.com[lb]/url[rb][/code]
+[code][lb]url=https://example.com[rb]Website[lb]/url[rb][/code]
+[code][lb]img width=32[rb]res://icon.svg[lb]/img[rb][/code]
+[code][lb]font=res://path/to/font.ttf[rb]Text[lb]/font[rb][/code]
+
+The help dialog enables links and code-copy actions. FileSystem hover tooltips render the same formatting without interactive navigation so hovering never changes editor focus.
+
+[b]Official reference[/b]
+
+[url=https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html]Godot: GDScript documentation comments[/url]

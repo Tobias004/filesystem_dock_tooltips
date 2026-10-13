@@ -1,0 +1,11 @@
+Generic Text Preview Showcase
+=============================
+
+This file verifies the generic TextFile preview.
+Line breaks are preserved.
+Tabs and indentation remain readable:
+    first indented line
+    second indented line
+
+The renderer deliberately limits the amount of file data shown so very large
+text files cannot create unbounded tooltip content.

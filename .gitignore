@@ -4,3 +4,5 @@
 addons/quill-ide/
 .vscode/
 benchmarks/
+addons/script-ide/
+addons/script-ide.zip

@@ -1,135 +1,114 @@
-# FileSystem Dock Tooltips
-Get useful information about your project files **without opening them**.
+# Better Tooltips
 
-FileSystem Dock Tooltips enhances tooltips in Godot's **FileSystem dock** with inline GDScript documentation and generated visual previews for common resource types.
+Better Tooltips extends Godot's editor tooltips with project documentation, visual resource previews, Markdown/text previews and additional context directly where you work.
 
-Hover over supported files to quickly inspect class documentation, materials, meshes, shaders, fonts, SpriteFrames, themes, curves, gradients, environments, skies and more — directly from the FileSystem dock.
+( Note: The project was originally released as **FileSystem Dock Tooltips.** -> Attention: Note the [upgrading section](#attention-upgrading-from-filesystem-dock-tooltips-2x) )
 
-Individual tooltip and preview modules can be enabled or disabled from the plugin's settings menu under **Project > Tools > FileSystem Dock Tooltips**.
+Instead of opening a file or resource just to inspect it, hover it in the FileSystem dock, Code Editor or supported navigation controls.
 
-## GDScript documentation at a glance
-Hover over a `.gd` file to see its `class_name` and `##` class documentation directly in the FileSystem dock.
-The tooltip preserves source-style formatting such as:
-- blank lines and indentation
-- repeated spaces and tabs
-- common BBCode formatting
-- Godot class, method and member references
-- long documentation lines with fallback wrapping
-Both documentation below `class_name` / `extends` and documentation directly above `class_name` are supported.
-Scripts are read as text and are not loaded or instantiated.
+## Code tooltips
 
-## Generated resource previews
-Starting with version 2.0, larger previews for resources where the standard FileSystem tooltip provides little or no visual information are available.
+Better Tooltips adds project documentation to Godot's existing GDScript symbol tooltips while keeping Godot's native title/signature and engine API documentation.
 
-### Materials
-`BaseMaterial3D` resources and spatial `ShaderMaterial` resources are rendered on a dedicated preview sphere with a generated studio environment.
-The preview includes:
-- PBR-friendly environment reflections
-- neutral studio lighting
-- transparency checkerboard
-- reference pedestal
-- anti-aliasing
-This is a newly rendered preview — not an enlarged version of Godot's existing thumbnail.
+Supported project symbols include, where Godot can resolve them reliably:
 
-### Meshes
-Meshes are displayed as generated 3D previews with:
-- automatic centering
-- automatic camera distance based on the mesh bounds
-- fixed preview lighting
-- a neutral material for clearly showing geometry
-No camera setup is required.
+- `class_name` classes
+- functions and methods
+- properties and variables
+- exported properties
+- signals
+- constants
+- enums and enum values
+- inner classes
 
-### Shaders
-`.gdshader` files are previewed according to their shader type:
-- `spatial` shaders are rendered on a 3D sphere
-- `canvas_item` shaders are applied to a generated 2D test image
-- unsupported shader types simply keep the normal Godot tooltip
+Documentation works at declarations and at many use sites, including cross-script project classes. The add-on uses a shared Godot-themed renderer for `##` documentation and can optionally show contiguous single-`#` implementation documentation.
 
-### Fonts
-Font resources display actual text samples in several sizes, including letters, numbers and symbols.
+The Code Editor can also show additional context for supported project resource references, Input/InputMap action names, scene-aware NodePaths (`$`, `%`, `get_node()`) and ProjectSettings keys.
 
-### SpriteFrames
-`SpriteFrames` resources show a compact contact sheet with animation names, frame count, FPS and several frames from each animation.
+## Resource previews
 
-### Themes
-Theme resources are demonstrated using representative Godot controls such as:
-- Button
-- CheckBox
-- LineEdit
-- ProgressBar
-- Slider
-This gives a quick visual impression of a theme without opening it in the Inspector.
+Generated visual previews are available for resource types where Godot's normal tooltip provides little visual information:
 
-### StyleBoxes
-StyleBox resources are displayed as a larger panel preview, making borders, corner radii, backgrounds and shadows immediately visible.
-
-### Curves
-The plugin generates visual previews for:
-- `Curve`
-- `Curve2D`
-- `Curve3D`
-2D curves are automatically fitted to the preview area. Curve3D resources use a fixed isometric projection, so no user-defined camera is required.
-
-### Gradients
-Gradient resources are displayed at a useful width over a checkerboard background, making both color transitions and transparency visible.
-
-### Environments and Skies
-Environment resources are rendered with a fixed reference scene containing materials with different surface properties.
-Sky resources receive a wide preview of the sky itself.
-
-## Integrated editor menu and settings
-Starting with version 2.1, a dedicated menu is available under:
-**Project > Tools > FileSystem Dock Tooltips**
-The menu provides:
-- **Settings...**
-- **Report a Bug**
-- **Feedback / Feature Request**
-
-### Settings
-Open:
-**Project > Tools > FileSystem Dock Tooltips > Settings...**
-to individually enable or disable:
-- GDScript documentation
-- Materials
-- Meshes
-- Fonts
-- Shaders
+- 3D materials and supported ShaderMaterials
+- meshes
+- fonts
+- spatial and canvas-item shaders
 - SpriteFrames
-- Themes
+- themes
 - StyleBoxes
-- Curves
-- Gradients
-- Environments
-- Skies
-The dialog also provides **Enable All** and **Disable All** buttons.
-Changes take effect immediately without restarting the editor.
-The selected module states are stored per project, so different projects can use different FileSystem tooltip configurations.
-All modules are enabled by default.
+- Curve, Curve2D and Curve3D
+- gradients
+- environments
+- skies
 
-### Bug reports and feedback
-The **Report a Bug** and **Feedback / Feature Request** entries open the corresponding GitHub issue pages in your browser.
-A GitHub account is required to submit a bug report, feedback or feature request.
+The same graphical preview pipeline can be reused in FileSystem, Code Editor and supported navigation tooltips. Texture and audio previews are intentionally left to Godot itself. PackedScene auto-rendering is intentionally excluded because hovering should not instantiate arbitrary scenes or execute `@tool` behavior.
 
-## Modular by design
-Each tooltip and preview type is implemented as a separate module.
+Graphical previews support temporary mouse-wheel zoom. The configured default size remains unchanged; wheel zoom affects only the current hover. Previews are constrained to the usable screen area.
 
-Starting with version 2.1, these modules can be managed through the integrated settings dialog, allowing individual tooltip types to be disabled if certain resource previews cause problems or are not needed in a particular project.
+## Markdown and text previews
 
-## Graceful fallback
-If a resource cannot be previewed or is not supported by a module, the plugin leaves Godot's normal FileSystem tooltip unchanged.
-The release version does not output its own debug messages during normal fallback cases.
+Markdown (`.md`, `.markdown`) and other supported text files can be previewed directly in tooltips. Markdown keeps common formatting such as headings, emphasis, lists, quotes, code and links. Long files scroll inside the tooltip instead of using graphical zoom.
 
-## What the plugin deliberately does not replace
-Godot already provides useful FileSystem tooltip previews for textures and audio resources, so the plugin does not duplicate them.
-Scenes are also not instantiated automatically for previews. Hovering a file should not unexpectedly execute scene or `@tool` behavior.
+The same text renderer is used in FileSystem, Code Editor, Godot's open-file list and compatible Quill/Script-IDE navigation surfaces.
+
+## Tooltips throughout the editor
+
+Better Tooltips integrates with:
+
+- FileSystem dock
+- GDScript Code Editor
+- Godot's script/open-file navigation controls
+- Quill IDE script tabs and outline (optional)
+- Script-IDE script tabs and outline/navigation controls (optional)
+
+## Quill-IDE and Script-IDE Integration
+
+Better Tooltips optionally integrates with **Quill-IDE** by Rayyan Aziz and **Script-IDE** by Marius Hanl.
+
+Their script tabs and outline entries can show the same class/member documentation and resource previews used elsewhere in the editor.
+The third-party plugins are only observed at runtime and are not modified.
+
+Integration can be enabled or disabled separately for each plugin.
+Third-party editor plugins are observed at runtime and are not modified. Quill IDE and Script-IDE integrations can be disabled independently.
+
+## Cache and performance
+
+Generated previews use a bounded RAM hot cache plus a persistent project-local cache under `.godot/better_tooltips/`. Cache keys include the source resource and relevant dependencies, so changed resources regenerate automatically.
+
+Hold **Shift while hovering** to force-regenerate a graphical preview and bypass the current cache/failure state for that attempt.
+
+## Settings
+
+Open:
+
+**Project > Tools > Better Tooltips > Settings...**
+
+Settings include:
+
+- individual tooltip/preview modules
+- Code Editor documentation behavior
+- Quill IDE / Script-IDE compatibility switches
+- default graphical preview size
+- preview-generation safety limit
+- tooltip background contrast
+- cache clearing
+
+A local documentation syntax reference is available under:
+
+**Project > Tools > Better Tooltips > Documentation Syntax...**
 
 ## Installation
-Copy:
-`addons/filesystem_dock_tooltips`
-into the root of your Godot project.
-Then enable **FileSystem Dock Tooltips** under:
-**Project > Project Settings > Plugins**
-The ZIP archive can be extracted directly into the project root.
 
-## Compatibility
-Designed for Godot 4.5 and newer.
+Copy:
+
+`addons/better_tooltips`
+
+into the project root and enable **Better Tooltips** under:
+
+**Project > Project Settings > Plugins**
+
+# ATTENTION: Upgrading from FileSystem Dock Tooltips 2.x
+
+Version 3.0 changes the add-on directory. Disable the old plugin and close Godot, **delete** `addons/filesystem_dock_tooltips`, then copy `addons/better_tooltips` into the project and enable **Better Tooltips**. Do not keep both add-on directories installed at the same time.Compatibility
+
+Godot 4.7 and newer are supported.

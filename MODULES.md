@@ -1,10 +1,13 @@
 # Tooltip modules
 
-Module switches are available under **Project > Tools > FileSystem Dock Tooltips > Settings...**. Changes apply immediately and are stored per project in Godot editor metadata outside the project folder.
+Module switches are available under **Project > Tools > Better Tooltips > Settings...**. Changes apply immediately and are stored per project in Godot editor metadata outside the project folder.
 
 | Setting | Module | Preview |
 | --- | --- | --- |
-| GDScript documentation | `script_documentation_tooltip.gd` | `class_name` + `##` documentation |
+| FileSystem GDScript documentation | `script_documentation_tooltip.gd` | `class_name` + Godot-formatted `##` documentation |
+| Code editor / ScriptEditor navigation documentation | `code_editor_documentation_tooltip.gd` + `script_editor_navigation_tooltip.gd` | renders project class/member documentation in Godot symbol help, the stock script list, compatible script tabs and Quill-style member outlines |
+| Markdown files | `markdown_preview_tooltip.gd` | shared live/scrollable Markdown preview for `.md` / `.markdown` TextFile entries |
+| Text files | `text_file_preview_tooltip.gd` | shared live/scrollable source-text preview for other Godot `TextFile` entries |
 | Materials | material | generated 3D sphere |
 | Meshes | mesh | generated 3D geometry, automatic camera fit |
 | Fonts | font | rendered text samples |
@@ -23,3 +26,47 @@ The modules deliberately do not duplicate Godot's own texture and audio tooltip
 previews. PackedScene auto-rendering is deliberately excluded.
 
 Release configuration: `DEBUG_MESSAGES := false`; all modules enabled by default.
+
+
+## Documentation rendering
+
+Better Tooltips 3.0 routes FileSystem, Code Editor and ScriptEditor navigation documentation through the reusable
+`core/documentation_renderer.gd`. It uses Godot's `EditorHelp` theme values for
+fonts, sizes, semantic colors and spacing and implements the documentation tags
+listed in Godot's GDScript documentation-comment reference. The same renderer
+drives **Project > Tools > Better Tooltips > Documentation Syntax...**
+and is independent from source extraction. Code Editor tooltips therefore reuse the
+same formatting while resolving the current unsaved script first and, when Godot's
+own symbol title identifies another project `class_name` owner, the corresponding
+project script as well. Top-level `.gd` constants declared through `preload()` or `load()` are also followed to the referenced script class documentation.
+
+The same module also adds class/member documentation to ScriptEditor navigation controls. The stock Godot script list shows the hovered script's documented `class_name`. Optional Quill IDE and Script-IDE bridges add class documentation to their script tabs and member documentation to their outlines using the public control/item metadata each plugin already maintains; neither plugin is modified. Resource constants/properties in either outline are also resolved through the same GDScript Resource-reference parser and central graphical preview pipeline used by CodeEdit, so previews, caching and wheel zoom are not reimplemented by the integrations. Each compatibility bridge has its own project setting and can be disabled completely while the standard Godot CodeEdit/script-list integration remains active. Quill and Script-IDE are tested separately because the editor add-ons conflict when installed together. For script lists and script tabs, the native resource-path tooltip is preserved and documented class information is appended underneath in the same TooltipPanel. Undocumented scripts/items keep their native behavior. Outline member lists without a useful native tooltip continue to use the add-on popup.
+
+The Code Editor module normally augments symbol help that Godot itself creates. It also
+handles literal/code-context hovers for supported Resources/project files, Input/InputMap action names,
+scene-aware NodePaths (including variables/short aliases initialized from them) and ProjectSettings keys. Resource/file previews reuse the central preview
+pipeline and cache; the other contexts add lightweight textual information without creating
+a second semantic type system. When Godot's description contains the same project `##` documentation, that native
+description can be replaced by the shared add-on renderer while Godot's
+title/signature is retained. For a documented project `class_name` token where Godot
+creates no tooltip at all, a narrow add-on fallback resolves the class from Godot's
+global class registry and displays the same shared documentation renderer without
+replacing Godot's tooltip callback. This is enabled by default because the add-on preserves
+source line breaks, uses the same formatting as FileSystem documentation and avoids
+the compact native project-documentation tooltip being clipped. Godot's built-in API help and
+distinct inherited/base-class help are not replaced. Ordinary single-`#` blocks
+directly above supported project class/member declarations can optionally be treated
+as implementation documentation. `##` display, single-`#` display and replacement of
+duplicate Godot project documentation are separate settings. Injected Code Editor
+documentation copies Godot's native help-content insets and add-on-owned tooltip
+sections use the configurable theme-aware background contrast.
+
+## Preview pipeline and cache
+
+All enabled resource-preview modules are routed through one central `tooltip_pipeline.gd` plugin. The pipeline provides visible generation/failure states, duplicate in-flight suppression, persistent caching and a generous safety limit. FileSystem GDScript documentation remains a direct `EditorResourceTooltipPlugin`, while Code Editor documentation attaches separately to Godot's `ScriptEditor`/`CodeEdit`. Code Editor Resource hovers call back into this same pipeline, so FileSystem and code share generated previews, cache entries, in-flight jobs, failure memory and Shift-forced regeneration.
+
+Better Tooltips 3.0 stores completed previews as PNG files below `res://.godot/better_tooltips/`. A bounded 32 MiB RAM hot cache keeps recent previews fast while preventing memory use from growing without limit in large projects. Cache signatures include the source resource, recursively discovered dependencies, module id, cache format, Godot version, editor scale, configured default preview size and relevant theme settings.
+
+The configured **Default preview size** (50-200%, default 100%) determines the cached render dimensions for every graphical preview module. Mouse-wheel resizing is centralized in the same pipeline for FileSystem and Code Editor previews. The nominal transient range is 50-250%, with a dynamic upper bound derived from the current usable screen and the tooltip's non-preview overhead so graphical tooltips stay fully manageable without becoming scrollable. Pointer-relative zoom keeps the cursor at the same normalized tooltip position when resizing under the mouse. The current texture scales immediately, then the Resource is regenerated after the debounce interval; transient renders never enter RAM/disk caches.
+
+Changing a resource or one of its external dependencies invalidates the corresponding persistent preview. **Clear Tooltip Caches** removes both RAM and disk entries and remembered session failures. The button is disabled when there is currently nothing to clear. Persistent failures are intentionally not stored; only successful previews survive an editor restart.

@@ -1,0 +1,23 @@
+[gd_resource type="ShaderMaterial" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://tests/cache/shaders/noise_texture_surface.gdshader" id="1_shader"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_cache"]
+noise_type = 3
+frequency = 0.010
+fractal_type = 1
+fractal_octaves = 9
+fractal_lacunarity = 2.15
+fractal_gain = 0.56
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cache"]
+width = 2048
+height = 2048
+generate_mipmaps = true
+seamless = true
+normalize = true
+noise = SubResource("FastNoiseLite_cache")
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/noise_tex = SubResource("NoiseTexture2D_cache")

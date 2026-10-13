@@ -1,0 +1,314 @@
+[gd_scene format=3 uid="uid://47ueuivtpt2f"]
+
+[ext_resource type="Script" uid="uid://eve3esr2br20" path="res://addons/better_tooltips/settings_dialog.gd" id="1_settings"]
+
+[node name="SettingsDialog" type="AcceptDialog" unique_id=294482655]
+oversampling_override = 1.0
+title = "Better Tooltips Settings"
+initial_position = 1
+size = Vector2i(780, 814)
+visible = true
+min_size = Vector2i(780, 600)
+ok_button_text = "Close"
+script = ExtResource("1_settings")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1715145831]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 772.0
+offset_bottom = 765.0
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Columns" type="HBoxContainer" parent="MarginContainer" unique_id=462837495]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="DocumentationColumn" type="VBoxContainer" parent="MarginContainer/Columns" unique_id=935683323]
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="lblDocumentation" type="Label" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1495733555]
+layout_mode = 2
+theme_type_variation = &"HeaderMedium"
+text = "Documentation"
+
+[node name="chkbGdscriptDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1381690256]
+layout_mode = 2
+tooltip_text = "Adds class_name and Godot ## documentation to GDScript files in
+the FileSystem dock."
+button_pressed = true
+text = "FileSystem GDScript documentation"
+
+[node name="chkbCodeEditorDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn" unique_id=194112211]
+layout_mode = 2
+tooltip_text = "Extends Godot Code Editor symbol help and ScriptEditor
+navigation controls with project GDScript documentation. This
+includes the stock script list plus compatible tabs/outlines
+from Quill IDE and Script-IDE."
+button_pressed = true
+text = "Code editor & script navigation docs"
+
+[node name="CodeEditorOptionsIndent" type="MarginContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1159159554]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+
+[node name="CodeEditorOptions" type="VBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent" unique_id=1523496877]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="chkbDocumentationComments" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=152727525]
+layout_mode = 2
+tooltip_text = "Shows Godot-style ## documentation comments with the add-on
+renderer for supported project classes and members in code and
+ScriptEditor navigation tooltips. This preserves source line
+breaks and avoids the clipping behavior of Godot's compact
+native project documentation tooltip."
+button_pressed = true
+text = "Show ## documentation comments"
+
+[node name="chkbSingleHashDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=540211061]
+layout_mode = 2
+tooltip_text = "Treats an ordinary contiguous # comment block directly above a
+supported project class/member as tooltip documentation in code
+and ScriptEditor navigation tooltips. This is an add-on
+extension for implementation-specific notes that should not
+become Godot API documentation."
+button_pressed = true
+text = "Show single # comment blocks"
+
+[node name="chkbReplaceGodotMemberDocs" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=1965630620]
+layout_mode = 2
+tooltip_text = "When Godot's native tooltip is showing the same project ##
+documentation, hide that duplicate description and render it
+with the add-on instead. Godot's own engine/API documentation
+and distinct inherited help remain untouched."
+button_pressed = true
+text = "Replace Godot-rendered project docs"
+
+[node name="chkbQuillIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=57867918]
+layout_mode = 2
+tooltip_text = "Searches for Quill IDE script tabs and outline controls and adds
+the same project documentation tooltips there. Disable this
+compatibility integration if a future Quill version changes its
+editor controls or causes problems; standard Godot code and
+script-list tooltips remain enabled."
+button_pressed = true
+text = "Enable Quill IDE integration"
+
+[node name="chkbScriptIdeIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=940639737]
+layout_mode = 2
+tooltip_text = "Searches for Script-IDE script tabs and outline controls and
+adds the same project documentation tooltips there. Disable this
+compatibility integration if a future Script-IDE version changes
+its editor controls or causes problems; standard Godot code and
+script-list tooltips remain enabled."
+button_pressed = true
+text = "Enable Script-IDE integration"
+
+[node name="HSeparatorAppearance" type="HSeparator" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1117074218]
+layout_mode = 2
+
+[node name="lblAppearance" type="Label" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1511541071]
+layout_mode = 2
+text = "Tooltip appearance"
+
+[node name="BackgroundContrastRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=137544127]
+layout_mode = 2
+
+[node name="lblBackgroundContrast" type="Label" parent="MarginContainer/Columns/DocumentationColumn/BackgroundContrastRow" unique_id=1982561034]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Changes only add-on-owned tooltip sections relative to Godot's
+current tooltip background. Dark themes are made lighter, light
+themes darker. 0% keeps the native background brightness."
+text = "Background contrast"
+
+[node name="spnBackgroundContrast" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/BackgroundContrastRow" unique_id=1366681329]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "Changes only add-on-owned tooltip sections relative to Godot's
+current tooltip background. Dark themes are made lighter, light
+themes darker. 0% keeps the native background brightness."
+max_value = 30.0
+value = 5.0
+suffix = " %"
+
+[node name="HSeparatorCache" type="HSeparator" parent="MarginContainer/Columns/DocumentationColumn" unique_id=965448416]
+layout_mode = 2
+
+[node name="lblCache" type="Label" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1096025258]
+layout_mode = 2
+text = "Tooltip cache"
+
+[node name="lblSafetyHint" type="Label" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1819104609]
+layout_mode = 2
+tooltip_text = "Maximum elapsed time for uncached resource-preview generation
+before the add-on stops at a safe checkpoint. 0 disables the
+limit. Hold Shift while hovering to force one regeneration
+attempt without the limit."
+text = "Preview generation safety limit. 0 disables the limit."
+autowrap_mode = 2
+
+[node name="SafetyLimitRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=777905067]
+layout_mode = 2
+
+[node name="lblPreviewSafetyLimit" type="Label" parent="MarginContainer/Columns/DocumentationColumn/SafetyLimitRow" unique_id=1214368894]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Maximum elapsed time for uncached resource-preview generation
+before the add-on stops at a safe checkpoint. 0 disables the
+limit. Hold Shift while hovering to force one regeneration
+attempt without the limit."
+text = "Safety limit"
+
+[node name="spnPreviewSafetyLimit" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/SafetyLimitRow" unique_id=380115102]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "Maximum elapsed time for uncached resource-preview generation
+before the add-on stops at a safe checkpoint. 0 disables the
+limit. Hold Shift while hovering to force one regeneration
+attempt without the limit."
+max_value = 60000.0
+step = 500.0
+value = 5000.0
+allow_greater = true
+suffix = " ms"
+
+[node name="btnClearCaches" type="Button" parent="MarginContainer/Columns/DocumentationColumn" unique_id=642253604]
+layout_mode = 2
+disabled = true
+text = "Clear Tooltip Caches"
+
+[node name="VerticalSeparator" type="VSeparator" parent="MarginContainer/Columns" unique_id=36249884]
+layout_mode = 2
+
+[node name="PreviewColumn" type="VBoxContainer" parent="MarginContainer/Columns" unique_id=1441668874]
+custom_minimum_size = Vector2(285, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="lblResourcePreviews" type="Label" parent="MarginContainer/Columns/PreviewColumn" unique_id=259096479]
+layout_mode = 2
+theme_type_variation = &"HeaderMedium"
+text = "File & resource previews"
+
+[node name="PreviewSizeRow" type="HBoxContainer" parent="MarginContainer/Columns/PreviewColumn" unique_id=96589878]
+layout_mode = 2
+
+[node name="lblPreviewSize" type="Label" parent="MarginContainer/Columns/PreviewColumn/PreviewSizeRow" unique_id=1653509186]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Default render size for cached graphical previews. While a
+graphical tooltip is visible, use the mouse wheel to resize only
+that hover temporarily; temporary zoom renders are never written
+to the cache. The live maximum is reduced automatically when
+necessary to keep the complete graphical tooltip within a
+manageable portion of the current screen."
+text = "Default preview size"
+
+[node name="spnPreviewSize" type="SpinBox" parent="MarginContainer/Columns/PreviewColumn/PreviewSizeRow" unique_id=751942341]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "Default render size for cached graphical previews. While a
+graphical tooltip is visible, use the mouse wheel to resize only
+that hover temporarily; temporary zoom renders are never written
+to the cache. The live maximum is reduced automatically when
+necessary to keep the complete graphical tooltip within a
+manageable portion of the current screen."
+min_value = 50.0
+max_value = 200.0
+step = 10.0
+value = 100.0
+suffix = " %"
+
+[node name="lblWheelZoomHint" type="Label" parent="MarginContainer/Columns/PreviewColumn" unique_id=1834756324]
+layout_mode = 2
+text = "Mouse wheel resizes the current graphical tooltip temporarily."
+autowrap_mode = 2
+
+[node name="chkbMarkdown" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=507348760]
+layout_mode = 2
+tooltip_text = "Shows a live Markdown preview with editor-sized text. Long
+documents scroll inside the tooltip; graphical zoom is not used."
+button_pressed = true
+text = "Markdown files"
+
+[node name="chkbTextFiles" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1559037536]
+layout_mode = 2
+tooltip_text = "Shows a live editor-font preview for Godot TextFile entries
+other than Markdown. Long files scroll inside the tooltip."
+button_pressed = true
+text = "Text files"
+
+[node name="chkbMaterials" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=779764193]
+layout_mode = 2
+tooltip_text = "Generates larger hover previews for supported 3D materials and
+spatial ShaderMaterials."
+button_pressed = true
+text = "Materials"
+
+[node name="chkbMeshes" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=200891040]
+layout_mode = 2
+tooltip_text = "Generates fitted 3D hover previews for Mesh resources."
+button_pressed = true
+text = "Meshes"
+
+[node name="chkbFonts" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=554421410]
+layout_mode = 2
+tooltip_text = "Shows rendered font samples in FileSystem tooltips."
+button_pressed = true
+text = "Fonts"
+
+[node name="chkbShaders" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1094205248]
+layout_mode = 2
+tooltip_text = "Generates previews for supported spatial and canvas_item
+.gdshader resources."
+button_pressed = true
+text = "Shaders"
+
+[node name="chkbSpriteFrames" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=446302791]
+layout_mode = 2
+tooltip_text = "Shows a contact-sheet preview for SpriteFrames resources."
+button_pressed = true
+text = "SpriteFrames"
+
+[node name="chkbThemes" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1137913582]
+layout_mode = 2
+tooltip_text = "Shows representative Godot controls rendered with the hovered
+Theme resource."
+button_pressed = true
+text = "Themes"
+
+[node name="chkbStyleBoxes" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=2037366740]
+layout_mode = 2
+tooltip_text = "Shows the hovered StyleBox on a representative panel."
+button_pressed = true
+text = "StyleBoxes"
+
+[node name="chkbCurves" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1495379435]
+layout_mode = 2
+tooltip_text = "Shows visual previews for Curve, Curve2D and Curve3D resources."
+button_pressed = true
+text = "Curves"
+
+[node name="chkbGradients" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1324165841]
+layout_mode = 2
+tooltip_text = "Shows the hovered Gradient over a transparency checkerboard."
+button_pressed = true
+text = "Gradients"
+
+[node name="chkbEnvironments" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=905598452]
+layout_mode = 2
+tooltip_text = "Renders Environment resources on a fixed reference scene."
+button_pressed = true
+text = "Environments"
+
+[node name="chkbSkies" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn" unique_id=1371640257]
+layout_mode = 2
+tooltip_text = "Renders Sky resources in a fixed wide-angle reference view."
+button_pressed = true
+text = "Skies"

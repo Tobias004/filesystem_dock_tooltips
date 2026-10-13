@@ -14,9 +14,9 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="filesystem_dock_tooltips"
+config/name="Better Tooltips"
 config/features=PackedStringArray("4.7", "Forward Plus")
-config/icon="res://addons/filesystem_dock_tooltips/icon.svg"
+config/icon="res://addons/better_tooltips/icon.svg"
 
 [display]
 
@@ -25,7 +25,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/filesystem_dock_tooltips/plugin.cfg", "res://addons/quill-ide/plugin.cfg")
+enabled=PackedStringArray("res://addons/better_tooltips/plugin.cfg", "res://addons/script-ide/plugin.cfg")
 
 [physics]
 

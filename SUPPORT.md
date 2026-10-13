@@ -6,8 +6,8 @@ Bug reports and feedback are welcome.
 
 When the add-on is enabled, use:
 
-- **Project > Tools > FileSystem Dock Tooltips: Report a Bug**
-- **Project > Tools > FileSystem Dock Tooltips: Feedback / Feature Request**
+- **Project > Tools > Better Tooltips: Report a Bug**
+- **Project > Tools > Better Tooltips: Feedback / Feature Request**
 
 These commands only open the corresponding GitHub form in your default browser.
 The add-on does **not** automatically upload project files, logs, or other data.
@@ -39,7 +39,7 @@ const DEBUG_MESSAGES := true
 
 in:
 
-`addons/filesystem_dock_tooltips/tooltip_settings.gd`
+`addons/better_tooltips/tooltip_settings.gd`
 
 Reload the add-on or restart the editor, reproduce the issue, and include the
 relevant Godot **Output** messages in the bug report.
