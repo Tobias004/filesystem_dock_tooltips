@@ -835,8 +835,13 @@ func _finalize_live_text_section(
 		var label := candidate as RichTextLabel
 		if label != null:
 			TooltipAppearance.limit_rich_text_height(label)
+	# The shared limiter may schedule one more layout pass. Apply the stricter
+	# two-region budget afterward so it cannot be overwritten by that callback.
 	if section.is_inside_tree():
 		await editor_tree.process_frame
+	if not is_instance_valid(section):
+		return
+	_limit_combined_script_preview_height(section)
 	_refresh_tooltip_layout(base, resize_target)
 	if section.is_inside_tree():
 		await editor_tree.process_frame
@@ -848,6 +853,42 @@ func _finalize_live_text_section(
 		base,
 		resize_target
 	)
+
+# A script can have both a large class description and a long source file.
+# The generic per-label limits are appropriate alone, but their sum could still
+# extend past the monitor. Bound both regions independently so neither becomes
+# inaccessible and each retains its own scrollbar when needed.
+func _limit_combined_script_preview_height(section: Control) -> void:
+	var documentation := section.find_child("ScriptDocumentation", true, false) as RichTextLabel
+	var source := section.find_child("TextPreview", true, false) as RichTextLabel
+	if documentation == null or source == null:
+		return
+	var screen := DisplayServer.get_primary_screen()
+	var editor_window := EditorInterface.get_base_control().get_window()
+	if editor_window != null and editor_window.current_screen >= 0:
+		screen = editor_window.current_screen
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	if usable.size.y <= 0:
+		return
+	var scale := EditorInterface.get_editor_scale()
+	# Leave room for Godot's native file header, separators and outer margins.
+	_set_script_region_height(documentation, minf(usable.size.y * 0.22, 230.0 * scale))
+	_set_script_region_height(source, minf(usable.size.y * 0.43, 460.0 * scale))
+
+func _set_script_region_height(label: RichTextLabel, ceiling: float) -> void:
+	if label.get_content_height() <= 0.0:
+		return
+	if label.get_content_height() <= ceiling:
+		label.fit_content = true
+		label.scroll_active = false
+		label.custom_minimum_size.y = 0.0
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	else:
+		label.fit_content = false
+		label.scroll_active = true
+		label.custom_minimum_size.y = ceiling
+		label.mouse_filter = Control.MOUSE_FILTER_STOP
+	label.update_minimum_size()
 
 # Converts a live Text/Markdown tooltip into an add-on-owned PopupPanel once its
 # final RichTextLabel height is known. Native Godot tooltips intentionally vanish
@@ -1097,6 +1138,42 @@ func _on_live_text_monitor_timeout() -> void:
 func _on_live_text_popup_window_input(event: InputEvent, sequence: int) -> void:
 	if int(_live_text_session.get("sequence", 0)) != sequence:
 		return
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return
+		var popup := _get_live_text_popup()
+		if popup == null:
+			return
+		# Keep actual tooltip commands inside the popup: scrolling and copying
+		# selected text should not close a long document.
+		var root := _get_live_text_root()
+		var label := _find_scrollable_rich_text(root) if root != null else null
+		if label != null and key_event.keycode in [KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN, KEY_HOME, KEY_END] and not key_event.ctrl_pressed and not key_event.alt_pressed:
+			var bar := label.get_v_scroll_bar()
+			if bar != null:
+				var delta := bar.page * 0.85 if key_event.keycode in [KEY_PAGEUP, KEY_PAGEDOWN] else 40.0 * EditorInterface.get_editor_scale()
+				if key_event.keycode == KEY_HOME:
+					bar.value = bar.min_value
+				elif key_event.keycode == KEY_END:
+					bar.value = bar.max_value - bar.page
+				else:
+					bar.value += delta * (-1.0 if key_event.keycode in [KEY_UP, KEY_PAGEUP] else 1.0)
+				popup.set_input_as_handled()
+				return
+		if key_event.keycode == KEY_C and key_event.ctrl_pressed:
+			var selected := _find_selected_rich_text(root)
+			if selected != null:
+				DisplayServer.clipboard_set(selected.get_selected_text())
+				popup.set_input_as_handled()
+				return
+		popup.set_input_as_handled()
+		_close_live_text_session()
+		# Return the key to the main editor Viewport after the popup is gone.
+		# In particular, F-keys and keyboard shortcuts must not be swallowed.
+		if key_event.keycode != KEY_ESCAPE:
+			call_deferred("_forward_closed_tooltip_key", key_event.duplicate())
+		return
 	if not (event is InputEventMouseButton):
 		return
 	var mouse_event := event as InputEventMouseButton
@@ -1138,9 +1215,39 @@ func _on_live_text_popup_window_input(event: InputEvent, sequence: int) -> void:
 		maxf(scroll_bar.min_value, scroll_bar.max_value - scroll_bar.page)
 	)
 
+
+# Re-inject once after closing the separate tooltip Window. The live popup is
+# destroyed first, so the event cannot be handled by it a second time.
+func _forward_closed_tooltip_key(event: InputEventKey) -> void:
+	var editor := EditorInterface.get_base_control()
+	if editor != null and editor.is_inside_tree():
+		editor.get_viewport().push_input(event, true)
+
+func _find_selected_rich_text(root: Node) -> RichTextLabel:
+	if root == null:
+		return null
+	for candidate: Node in root.find_children("*", "RichTextLabel", true, false):
+		var label := candidate as RichTextLabel
+		if label != null and label.has_selection():
+			return label
+	return null
+
 func _find_scrollable_rich_text(root: Node) -> RichTextLabel:
 	if root == null:
 		return null
+	# When a script shows both class documentation and its source, wheel and
+	# navigation keys should scroll the section actually under the pointer.
+	var pointer := Vector2(DisplayServer.mouse_get_position())
+	for candidate: Node in root.find_children("*", "RichTextLabel", true, false):
+		var hovered := candidate as RichTextLabel
+		if ( hovered != null ):
+			var screen_rect := Rect2(hovered.get_screen_transform().origin,hovered.size)
+			if (
+				hovered.scroll_active
+				and not hovered.fit_content
+				and screen_rect.has_point(pointer)
+			):
+				return hovered
 	if root is RichTextLabel:
 		var direct := root as RichTextLabel
 		if direct.scroll_active and not direct.fit_content:

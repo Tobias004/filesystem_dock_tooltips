@@ -694,13 +694,25 @@ func _resolve_member_from_source(
 		result["documentation"] = documentation
 		result["title"] = _format_member_title(kind, context_class, symbol)
 
+	var resource_reference := DocumentationParser.find_resource_reference(
+		source,
+		symbol,
+		-1
+	)
+	var resource_path := str(resource_reference.get("path", ""))
+	# Script constants are loadable GDScript Resources but deliberately are not
+	# part of the graphical preview pipeline. Show the referenced class docs in
+	# outlines just as CodeEdit's native help does for the same constant.
+	if resource_path.ends_with(".gd") and not result.has("documentation"):
+		var script_class := _resolve_script_class(resource_path)
+		if not script_class.is_empty():
+			result["documentation"] = script_class["documentation"]
+			result["title"] = _format_member_title("constant", context_class, symbol)
+			# Rich-text member links belong to the referenced class, not the
+			# showcase script that declares the preload constant.
+			result["context_class"] = str(script_class.get("context_class", ""))
+			result["referenced_script_path"] = resource_path
 	if _preview_pipeline != null:
-		var resource_reference := DocumentationParser.find_resource_reference(
-			source,
-			symbol,
-			-1
-		)
-		var resource_path := str(resource_reference.get("path", ""))
 		if (
 			not resource_path.is_empty()
 			and _preview_pipeline.supports_preview_path(resource_path)

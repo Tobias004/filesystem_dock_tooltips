@@ -738,6 +738,7 @@ func _finish_native_tooltip(
 	var native_content := help_controls["content"] as RichTextLabel
 	var hover_context := _get_symbol_context(code_edit, native_title)
 	if hover_context.is_empty():
+		_schedule_native_tooltip_fit(popup, native_content)
 		return
 	var changed := false
 	var resolved := _resolve_source_documentation(
@@ -818,6 +819,37 @@ func _finish_native_tooltip(
 		changed = true
 	if changed:
 		popup.reset_size()
+	# Even an unmodified Godot help bit can be much taller than the screen
+	# (e.g. a Camera2D engine-class description). Limit its native text and
+	# reposition after Godot and the injected sections have finished layout.
+	_schedule_native_tooltip_fit(popup, native_content)
+
+func _schedule_native_tooltip_fit(popup: PopupPanel, content: RichTextLabel) -> void:
+	if not is_instance_valid(popup) or not is_instance_valid(content):
+		return
+	TooltipAppearance.limit_rich_text_height(content)
+	call_deferred("_fit_native_tooltip_after_layout", weakref(popup), weakref(content))
+
+func _fit_native_tooltip_after_layout(popup_ref: WeakRef, content_ref: WeakRef) -> void:
+	var popup := popup_ref.get_ref() as PopupPanel if popup_ref != null else null
+	var content := content_ref.get_ref() as RichTextLabel if content_ref != null else null
+	if not is_instance_valid(popup) or not is_instance_valid(content):
+		return
+	if not popup.visible:
+		return
+	TooltipAppearance.limit_rich_text_height(content)
+	popup.reset_size()
+	var screen := popup.current_screen
+	if screen < 0:
+		screen = DisplayServer.get_primary_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	var margin := roundi(8.0 * EditorInterface.get_editor_scale())
+	var max_x := maxi(usable.position.x + margin, usable.end.x - popup.size.x - margin)
+	var max_y := maxi(usable.position.y + margin, usable.end.y - popup.size.y - margin)
+	popup.position = Vector2i(
+		clampi(popup.position.x, usable.position.x + margin, max_x),
+		clampi(popup.position.y, usable.position.y + margin, max_y)
+	)
 
 # Resolves one hovered variable/constant to a literal preload()/load() path. The
 # current unsaved script is preferred for local/unqualified symbols; if Godot's

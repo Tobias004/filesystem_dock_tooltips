@@ -15,14 +15,13 @@ const DocumentationRenderer := preload(
 const TooltipAppearance := preload(
 	"res://addons/better_tooltips/core/tooltip_appearance.gd"
 )
+const TextPreviewRenderer := preload(
+	"res://addons/better_tooltips/core/text_preview_renderer.gd"
+)
 
 const MIN_TOOLTIP_WIDTH := 420.0
 const MAX_TOOLTIP_WIDTH := 760.0
 const TOOLTIP_HORIZONTAL_PADDING := 28.0
-const CONTENT_MARGIN_LEFT := 8
-const CONTENT_MARGIN_RIGHT := 8
-const CONTENT_MARGIN_TOP := 4
-const CONTENT_MARGIN_BOTTOM := 6
 const CLASS_NAME_KEYWORD := "class_name"
 
 var _renderer: BTDocumentationRenderer = null
@@ -32,9 +31,13 @@ var _renderer: BTDocumentationRenderer = null
 func _handles(type: String) -> bool:
 	return type == "GDScript"
 
-# Appends class_name and script-level ## documentation to Godot's existing
-# FileSystem tooltip. If no suitable documentation is found, the base tooltip
-# is returned unchanged.
+# Keep source text live and scrollable even without a documented class. The
+# central pipeline owns the popup and keyboard behavior for all text previews.
+func is_live_preview() -> bool:
+	return true
+
+# A documented class is shown first, followed by its source. Scripts without a
+# class_name or class documentation still get a source preview.
 func _make_tooltip_for_path(
 	path: String,
 	_metadata: Dictionary,
@@ -42,60 +45,42 @@ func _make_tooltip_for_path(
 ) -> Control:
 	if not path.ends_with(".gd"):
 		return base
-	var documentation := _read_script_documentation(path)
-	if documentation.is_empty():
+	var preview := TextPreviewRenderer.create_plain_preview(path, {})
+	if preview == null:
 		return base
-	var renderer := _get_renderer()
-	renderer.refresh_theme()
-	base.add_child(HSeparator.new())
-	var tooltip_width := _calculate_tooltip_width(documentation, renderer)
-	var editor_scale := EditorInterface.get_editor_scale()
-	var margin_left := roundi(CONTENT_MARGIN_LEFT * editor_scale)
-	var margin_right := roundi(CONTENT_MARGIN_RIGHT * editor_scale)
-	var margin_top := roundi(CONTENT_MARGIN_TOP * editor_scale)
-	var margin_bottom := roundi(CONTENT_MARGIN_BOTTOM * editor_scale)
-	var background_panel := PanelContainer.new()
-	background_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	TooltipAppearance.style_addon_panel(background_panel)
-	base.add_child(background_panel)
-	var content_margin := MarginContainer.new()
-	content_margin.custom_minimum_size.x = (
-		tooltip_width + margin_left + margin_right
-	)
-	content_margin.add_theme_constant_override("margin_left", margin_left)
-	content_margin.add_theme_constant_override("margin_right", margin_right)
-	content_margin.add_theme_constant_override("margin_top", margin_top)
-	content_margin.add_theme_constant_override("margin_bottom", margin_bottom)
-	background_panel.add_child(content_margin)
-	# Keep a fixed content width. RichTextLabel needs it to calculate fitted
-	# height correctly while autowrapping is enabled inside a tooltip.
-	var content := VBoxContainer.new()
-	content.custom_minimum_size.x = tooltip_width
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_margin.add_child(content)
-	var class_name_label := Label.new()
-	class_name_label.text = documentation["class_name"]
-	renderer.style_type_label(class_name_label)
-	content.add_child(class_name_label)
-	var description_label := RichTextLabel.new()
-	description_label.fit_content = true
-	description_label.scroll_active = false
-	description_label.selection_enabled = false
-	description_label.focus_mode = Control.FOCUS_NONE
-	description_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	description_label.autowrap_trim_flags = 0
-	description_label.custom_minimum_size.x = tooltip_width
-	description_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	description_label.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	content.add_child(description_label)
-	renderer.render_document(
-		description_label,
-		documentation,
-		str(documentation["class_name"]),
-		false
-	)
-	TooltipAppearance.limit_rich_text_height(description_label)
+	var documentation := _read_script_documentation(path)
+	if not documentation.is_empty():
+		var renderer := _get_renderer()
+		renderer.refresh_theme()
+		var content := VBoxContainer.new()
+		content.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		content.custom_minimum_size.x = _calculate_tooltip_width(documentation, renderer)
+		base.add_child(content)
+		var class_name_label := Label.new()
+		class_name_label.text = str(documentation["class_name"])
+		renderer.style_type_label(class_name_label)
+		content.add_child(class_name_label)
+		var description_label := RichTextLabel.new()
+		description_label.name = &"ScriptDocumentation"
+		description_label.fit_content = true
+		description_label.scroll_active = false
+		description_label.selection_enabled = true
+		description_label.focus_mode = Control.FOCUS_NONE
+		description_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		description_label.autowrap_trim_flags = 0
+		description_label.custom_minimum_size.x = content.custom_minimum_size.x
+		description_label.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		content.add_child(description_label)
+		renderer.render_document(
+			description_label,
+			documentation,
+			str(documentation["class_name"]),
+			false
+		)
+		TooltipAppearance.limit_rich_text_height(description_label)
+		base.add_child(HSeparator.new())
+	base.add_child(preview)
 	return base
 
 # Releases the shared renderer when Godot unregisters this tooltip module.

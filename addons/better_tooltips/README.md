@@ -10,7 +10,7 @@ It adds project documentation, visual resource previews, Markdown/text previews 
 - Rich GDScript documentation tooltips for classes, methods, properties, signals, constants, enums and inner classes
 - Documentation at both declarations and use sites, including members from other project scripts
 - Visual previews for materials, meshes, fonts, shaders, SpriteFrames, themes, StyleBoxes, curves, gradients, environments and skies
-- Markdown and generic text previews
+- Markdown (including pipe tables), generic text and GDScript source previews
 - Contextual tooltips for NodePaths, Input actions and ProjectSettings keys
 - Resource previews directly from `preload()`, `load()` and resource variables in GDScript
 - Tooltips in Godot's FileSystem dock, Code Editor and script navigation
@@ -93,7 +93,9 @@ Graphical previews can be resized temporarily with the mouse wheel while the too
 
 ## Markdown and Text Previews
 
-Markdown (`.md` / `.markdown`) and other Godot `TextFile` entries can be previewed directly from the FileSystem dock.
+Markdown (`.md` / `.markdown`), ordinary Godot `TextFile` entries and GDScript (`.gd`) source can be previewed directly from the FileSystem dock. Markdown pipe tables render with real cells, styled header rows, borders and column alignment.
+
+GDScript files show their class documentation first when available, followed by the source text. Files without `class_name` or class documentation still show the source. Long descriptions and source text remain separately scrollable in one tooltip.
 
 The same live text renderer is used for statically resolvable `res://` / `uid://` paths in CodeEdit and Godot's open-file list.
 

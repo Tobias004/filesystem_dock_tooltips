@@ -112,9 +112,9 @@ var _settings_dialog: BTSettingsDialog = null
 var _documentation_help_dialog: BTDocumentationHelpDialog = null
 
 # Initializes the add-on integrations owned by the controller. One central
-# preview pipeline is registered with Godot; resource-specific modules are added
-# to it, FileSystem documentation stays a direct tooltip plugin, and CodeEdit
-# documentation attaches independently to Godot's ScriptEditor.
+# preview pipeline is registered with Godot; GDScript source/documentation
+# and resource previews share it. CodeEdit documentation attaches independently
+# to Godot's ScriptEditor.
 func setup(plugin: EditorPlugin) -> void:
 	_plugin = plugin
 	_tooltip_cache = TooltipCache.new() as BTTooltipCache
@@ -166,9 +166,9 @@ func cleanup() -> void:
 	_tooltip_cache = null
 	_plugin = null
 
-# Creates one enabled module. FileSystem documentation is registered directly
-# with Godot, CodeEdit documentation owns its ScriptEditor hook, and resource
-# previews are registered inside the shared pipeline.
+# Creates one enabled module. GDScript documentation and source previews use
+# the shared live-text pipeline; CodeEdit documentation owns its ScriptEditor
+# hook, and graphical previews use the same pipeline with image caching.
 func _register_module(module: Dictionary) -> void:
 	var module_id: String = module["id"]
 	var module_name: String = module["name"]
@@ -197,19 +197,14 @@ func _register_module(module: Dictionary) -> void:
 			instance.free()
 		return
 	var module_plugin := instance as EditorResourceTooltipPlugin
-	if module_id == Settings.MODULE_SCRIPT_DOCUMENTATION:
-		EditorInterface.get_file_system_dock().add_resource_tooltip_plugin(
-			module_plugin
-		)
-	else:
-		if _tooltip_pipeline == null:
-			Debug.error(module_name, "preview pipeline is not available")
-			return
-		_tooltip_pipeline.add_module(
-			module_id,
-			module_name,
-			module_plugin
-		)
+	if _tooltip_pipeline == null:
+		Debug.error(module_name, "preview pipeline is not available")
+		return
+	_tooltip_pipeline.add_module(
+		module_id,
+		module_name,
+		module_plugin
+	)
 	_tooltip_plugins[module_id] = module_plugin
 	Debug.log(module_name, "registered")
 
@@ -228,14 +223,8 @@ func _unregister_module(module: Dictionary) -> void:
 		Debug.log(integration_name, "unregistered")
 		return
 	var module_plugin := instance as EditorResourceTooltipPlugin
-	if module_id == Settings.MODULE_SCRIPT_DOCUMENTATION:
-		if module_plugin != null:
-			EditorInterface.get_file_system_dock().remove_resource_tooltip_plugin(
-				module_plugin
-			)
-	else:
-		if _tooltip_pipeline != null:
-			_tooltip_pipeline.remove_module(module_id)
+	if _tooltip_pipeline != null:
+		_tooltip_pipeline.remove_module(module_id)
 	if module_plugin != null and module_plugin.has_method("cleanup"):
 		module_plugin.call("cleanup")
 	_tooltip_plugins.erase(module_id)
