@@ -8,6 +8,7 @@ extends RefCounted
 ## FileSystem, Code Editor and navigation tooltips, preserving editor font sizes
 ## and allowing long content to scroll naturally.
 
+const TooltipAppearance := preload("res://addons/better_tooltips/core/tooltip_appearance.gd")
 const DocumentationRenderer := preload(
 	"res://addons/better_tooltips/core/documentation_renderer.gd"
 )
@@ -59,7 +60,7 @@ static func create_plain_preview(path: String, _metadata: Dictionary) -> Control
 		return null
 	var outer := _create_outer()
 	var content := VBoxContainer.new()
-	content.custom_minimum_size.x = PREVIEW_WIDTH * EditorInterface.get_editor_scale()
+	content.custom_minimum_size.x = TooltipAppearance.text_content_width(PREVIEW_WIDTH * EditorInterface.get_editor_scale())
 	outer.add_child(content)
 	var text_label := RichTextLabel.new()
 	text_label.name = &"TextPreview"
@@ -69,12 +70,51 @@ static func create_plain_preview(path: String, _metadata: Dictionary) -> Control
 	text_label.selection_enabled = true
 	text_label.focus_mode = Control.FOCUS_NONE
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_label.custom_minimum_size.x = PREVIEW_WIDTH * EditorInterface.get_editor_scale()
+	text_label.custom_minimum_size.x = TooltipAppearance.text_content_width(PREVIEW_WIDTH * EditorInterface.get_editor_scale())
 	text_label.text = str(data.get("text", ""))
 	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_configure_plain_text_label(text_label)
 	content.add_child(text_label)
 	_append_truncation_hint(content, bool(data.get("truncated", false)))
+	return outer
+
+# Navigation outlines show only the hovered method, not the full script.
+# The source font/spacing match the plain .gd preview while long methods are
+# bounded and scroll independently from any documentation above them.
+static func create_method_source_preview(source: String) -> Control:
+	var outer := _create_outer()
+	var content := VBoxContainer.new()
+	var width := TooltipAppearance.text_content_width(PREVIEW_WIDTH * EditorInterface.get_editor_scale())
+	content.custom_minimum_size.x = width
+	outer.add_child(content)
+	var label := RichTextLabel.new()
+	label.name = &"MethodSourcePreview"
+	label.bbcode_enabled = false
+	label.fit_content = false
+	label.scroll_active = true
+	label.selection_enabled = true
+	label.focus_mode = Control.FOCUS_NONE
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = width
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.text = source
+	label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_configure_plain_text_label(label)
+	var renderer := DocumentationRenderer.new() as BTDocumentationRenderer
+	renderer.refresh_theme()
+	var font := renderer.get_document_font()
+	var font_height := float(font.get_height(renderer.get_document_font_size()))
+	var scale := EditorInterface.get_editor_scale()
+	var source_lines := source.count("\n") + 1
+	# A content-length estimate is sufficient to size the initial popup; the
+	# RichTextLabel itself handles extra wrapping and actual scroll extent.
+	var estimated_height := maxf(54.0 * scale, source_lines * (font_height + scale) + 14.0 * scale)
+	var ceiling := minf(360.0 * scale, TooltipAppearance.get_text_max_height_pixels() - 90.0 * scale)
+	var window := EditorInterface.get_base_control().get_window()
+	if window != null:
+		ceiling = minf(ceiling, float(window.size.y) * 0.40)
+	label.custom_minimum_size.y = minf(estimated_height, ceiling)
+	content.add_child(label)
 	return outer
 
 static func create_markdown_preview(path: String, _metadata: Dictionary) -> Control:
@@ -83,7 +123,7 @@ static func create_markdown_preview(path: String, _metadata: Dictionary) -> Cont
 		return null
 	var outer := _create_outer()
 	var content := VBoxContainer.new()
-	content.custom_minimum_size.x = PREVIEW_WIDTH * EditorInterface.get_editor_scale()
+	content.custom_minimum_size.x = TooltipAppearance.text_content_width(PREVIEW_WIDTH * EditorInterface.get_editor_scale())
 	outer.add_child(content)
 	var renderer := DocumentationRenderer.new() as BTDocumentationRenderer
 	renderer.refresh_theme()
@@ -99,12 +139,19 @@ static func create_markdown_preview(path: String, _metadata: Dictionary) -> Cont
 	markdown.selection_enabled = true
 	markdown.focus_mode = Control.FOCUS_NONE
 	markdown.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	markdown.custom_minimum_size.x = PREVIEW_WIDTH * EditorInterface.get_editor_scale()
+	markdown.custom_minimum_size.x = TooltipAppearance.text_content_width(PREVIEW_WIDTH * EditorInterface.get_editor_scale())
+	var anchors := {}
 	markdown.text = _markdown_to_bbcode(
 		str(data.get("text", "")),
-		renderer.get_document_font_size()
+		renderer.get_document_font_size(),
+		anchors
 	)
-	markdown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A link must receive pointer events even when the document is too short
+	# to need its own scrollbar. The shared height limiter preserves this flag.
+	markdown.set_meta("_bt_interactive_links", true)
+	markdown.mouse_filter = Control.MOUSE_FILTER_STOP
+	markdown.meta_underlined = true
+	markdown.meta_clicked.connect(_on_markdown_link_clicked.bind(path, markdown, anchors))
 	content.add_child(markdown)
 	_append_truncation_hint(content, bool(data.get("truncated", false)))
 	return outer
@@ -142,7 +189,7 @@ static func _configure_compact_text_spacing(label: RichTextLabel) -> void:
 
 # Generic text uses the editor's source font but deliberately keeps the same
 # document-size baseline as the rest of the tooltip. Preview-size settings are
-# graphical-only and never shrink/enlarge text fonts.
+# independent of text font scaling and never resize the preview via the wheel.
 static func _configure_plain_text_label(label: RichTextLabel) -> void:
 	var renderer := DocumentationRenderer.new() as BTDocumentationRenderer
 	renderer.refresh_theme()
@@ -162,7 +209,7 @@ static func _configure_plain_text_label(label: RichTextLabel) -> void:
 # Convert Markdown to BBCode with at most one empty line between source
 # blocks. The RichTextLabel's paragraph spacing is compact, so adjacent list
 # items and code lines stay close while blank lines remain visually distinct.
-static func _markdown_to_bbcode(markdown: String, base_font_size: int) -> String:
+static func _markdown_to_bbcode(markdown: String, base_font_size: int, anchors: Dictionary = {}) -> String:
 	var result := PackedStringArray()
 	var in_code_block := false
 	var pending_blank := false
@@ -244,6 +291,14 @@ static func _markdown_to_bbcode(markdown: String, base_font_size: int) -> String
 		var heading_level := _heading_level(source_line)
 		if heading_level > 0:
 			var heading_text := stripped.substr(heading_level + 1).strip_edges()
+			var anchor := _heading_slug(heading_text)
+			if not anchor.is_empty():
+				var unique_anchor := anchor
+				var duplicate_index := 1
+				while anchors.has(unique_anchor):
+					unique_anchor = "%s-%d" % [anchor, duplicate_index]
+					duplicate_index += 1
+				anchors[unique_anchor] = result.size()
 			var heading_size := maxi(base_font_size, base_font_size + 12 - (heading_level - 1) * 3)
 			result.append("[font_size=%d][b]%s[/b][/font_size]" % [heading_size, _inline_markdown_to_bbcode(heading_text)])
 			if heading_level <= 2:
@@ -343,15 +398,132 @@ static func _heading_level(line: String) -> int:
 		return 0
 	return level if stripped.substr(level, 1) == " " else 0
 
+# Parse links before escaping brackets: escaping first used to leave literal
+# [lb] fragments in the result when a URL failed the regular expression.
+# A small scanner also handles parentheses within URLs, escaped punctuation and
+# ordinary Markdown emphasis on either side of a link.
 static func _inline_markdown_to_bbcode(text: String) -> String:
-	var result := _escape_bbcode(text)
-	result = _regex_replace(result, "`([^`\\n]+)`", "[bgcolor=#303030][color=#e4bd78][code]$1[/code][/color][/bgcolor]")
-	result = _regex_replace(result, "\\[lb\\]([^\\n]+?)\\[rb\\]\\((https?://[^ )]+)\\)", "[url=$2][color=#4ea1ff]$1[/color][/url]")
-	result = _regex_replace(result, "\\*\\*([^*\\n]+)\\*\\*", "[b]$1[/b]")
-	result = _regex_replace(result, "__([^_\\n]+)__", "[b]$1[/b]")
-	result = _regex_replace(result, "\\*([^*\\n]+)\\*", "[i]$1[/i]")
-	return result
+	var output := ""
+	var pending := ""
+	var index := 0
+	var in_inline_code := false
+	while index < text.length():
+		if text.substr(index, 1) == "\\" and index + 1 < text.length():
+			var escaped := text.substr(index + 1, 1)
+			if escaped in ["[", "]", "(", ")", "*", "_", "`", "\\"]:
+				pending += escaped
+				index += 2
+				continue
+		if text.substr(index, 1) == "`":
+			in_inline_code = not in_inline_code
+		if in_inline_code or text.substr(index, 1) != "[":
+			pending += text.substr(index, 1)
+			index += 1
+			continue
+		var closing := text.find("](", index + 1)
+		if closing < 0 or text.substr(index + 1, closing - index - 1).contains("\n"):
+			pending += "["
+			index += 1
+			continue
+		var target_start := closing + 2
+		var cursor := target_start
+		var depth := 1
+		while cursor < text.length():
+			var character := text.substr(cursor, 1)
+			if character == "\\" and cursor + 1 < text.length():
+				cursor += 2
+				continue
+			if character == "(":
+				depth += 1
+			elif character == ")":
+				depth -= 1
+				if depth == 0:
+					break
+			cursor += 1
+		if depth != 0:
+			pending += "["
+			index += 1
+			continue
+		var target := text.substr(target_start, cursor - target_start).replace("\\)", ")").replace("\\(", "(")
+		var label := text.substr(index + 1, closing - index - 1)
+		# Only emit metadata for supported targets. Never turn local schemes,
+		# unknown protocols or BBCode brackets into click actions.
+		if _is_supported_link_target(target):
+			output += _format_inline_text(pending)
+			pending = ""
+			var safe_meta := "bt-md:" + target.uri_encode()
+			output += "[url=%s][color=#4ea1ff]%s[/color][/url]" % [safe_meta, _format_inline_text(label)]
+			index = cursor + 1
+		else:
+			pending += text.substr(index, cursor - index + 1)
+			index = cursor + 1
+	return output + _format_inline_text(pending)
 
+static func _format_inline_text(text: String) -> String:
+	var formatted := _escape_bbcode(text)
+	formatted = _regex_replace(formatted, "`([^`\\n]+)`", "[bgcolor=#303030][color=#e4bd78][code]$1[/code][/color][/bgcolor]")
+	formatted = _regex_replace(formatted, "\\*\\*([^*\\n]+)\\*\\*", "[b]$1[/b]")
+	formatted = _regex_replace(formatted, "__([^_\\n]+)__", "[b]$1[/b]")
+	formatted = _regex_replace(formatted, "\\*([^*\\n]+)\\*", "[i]$1[/i]")
+	return formatted
+
+static func _is_supported_link_target(target: String) -> bool:
+	if target.is_empty() or target.contains("[") or target.contains("]"):
+		return false
+	if target.contains("\n") or target.contains("\r") or target.contains(" "):
+		return false
+	var normalized := target.to_lower()
+	if normalized.begins_with("https://") or normalized.begins_with("http://"):
+		return target.length() > normalized.find("://") + 3
+	if target.begins_with("#"):
+		return target.length() > 1
+	# Only paths within the project are allowed. No other URI schemes, absolute
+	# disk paths or Windows drive letters are accepted.
+	return not target.contains(":") and not target.begins_with("/") and not target.begins_with("\\")
+
+static func _heading_slug(text: String) -> String:
+	var plain := text.strip_edges().to_lower()
+	plain = _regex_replace(plain, "`([^`]+)`", "$1")
+	plain = _regex_replace(plain, "\\[([^]]+)\\]\\([^)]*\\)", "$1")
+	plain = _regex_replace(plain, "[^\\p{L}\\p{N}_ -]", "")
+	plain = _regex_replace(plain, "\\s+", "-")
+	return plain.strip_edges().trim_prefix("-").trim_suffix("-")
+
+# URLs are deliberately handled only when clicked, never during rendering.
+# Relative files are confined to res:// and selected in the FileSystem Dock;
+# scripts/scenes can also be opened directly using the public editor APIs.
+static func _on_markdown_link_clicked(meta: Variant, source_path: String, label: RichTextLabel, anchors: Dictionary) -> void:
+	var value := str(meta)
+	if not value.begins_with("bt-md:"):
+		return
+	var target := value.trim_prefix("bt-md:").uri_decode()
+	if not _is_supported_link_target(target):
+		return
+	var normalized := target.to_lower()
+	if normalized.begins_with("https://") or normalized.begins_with("http://"):
+		OS.shell_open(target)
+		return
+	if target.begins_with("#"):
+		var anchor := target.substr(1).uri_decode().to_lower()
+		if is_instance_valid(label) and anchors.has(anchor):
+			label.scroll_to_paragraph(int(anchors[anchor]))
+		return
+	var path_part := target.get_slice("#", 0).uri_decode()
+	if path_part.is_empty():
+		return
+	var resolved := source_path.get_base_dir().path_join(path_part).simplify_path()
+	if not resolved.begins_with("res://") or not FileAccess.file_exists(resolved):
+		return
+	var dock := EditorInterface.get_file_system_dock()
+	if dock != null:
+		dock.navigate_to_path(resolved)
+	var ext := resolved.get_extension().to_lower()
+	if ext == "gd":
+		var script := ResourceLoader.load(resolved) as Script
+		if script != null:
+			EditorInterface.edit_script(script)
+	elif ext in ["tscn", "scn"]:
+		EditorInterface.open_scene_from_path(resolved)
 static func _regex_replace(text: String, pattern: String, replacement: String) -> String:
 	var regex := RegEx.new()
 	if regex.compile(pattern) != OK:
@@ -359,4 +531,14 @@ static func _regex_replace(text: String, pattern: String, replacement: String) -
 	return regex.sub(text, replacement, true)
 
 static func _escape_bbcode(text: String) -> String:
-	return text.replace("[", "[lb]").replace("]", "[rb]")
+	# Do not chain replace("[", ...) and replace("]", ...): the second
+	# replacement also rewrites the closing bracket of the first tag.
+	var escaped := ""
+	for character in text:
+		if character == "[":
+			escaped += "[lb]"
+		elif character == "]":
+			escaped += "[rb]"
+		else:
+			escaped += character
+	return escaped

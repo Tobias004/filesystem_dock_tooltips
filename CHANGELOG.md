@@ -1,19 +1,62 @@
 # Changelog
 
+## 3.2.0 (2026-10-28)
 
-## 3.0.5
+Includes the improvements from the unreleased 3.1.0 development version.
 
-### Improvements
-- Added scrollable source-code previews for `.gd` files. Scripts with class documentation show both the documentation and source code; undocumented scripts show the source directly.
-- Added Markdown table support with formatted headers, aligned columns, cell borders and inline formatting.
-- Improved Markdown formatting with clearer headings, styled quotes, code blocks, links and lists, inspired by VS Code.
-- Made Markdown and plain-text previews more compact by reducing excessive line and paragraph spacing without changing font sizes.
+### New and improved
+
+- Added documentation and source-code previews for methods in Godot's **Filter Methods** list and compatible Quill-IDE / Script-IDE outlines. Undocumented methods show their source directly.
+- Improved mouse-wheel scrolling, tooltip hover persistence and scrollbar dragging across FileSystem, editor navigation and supported IDE integrations.
+- Added clickable links in Markdown previews, including web links, project file links and heading anchors.
+- Added adjustable font scaling and maximum width/height for text and code tooltips. The default text font is one point smaller than the editor theme font. Graphical previews are unaffected.
+- Added **Reset to Defaults** to the settings dialog, with confirmation.
 
 ### Fixes
-- Improved keyboard handling: Escape closes tooltips immediately, while normal keys and function-key shortcuts are forwarded to Godot.
-- Kept scrolling and text selection available inside interactive tooltips.
-- Fixed oversized text tooltips by limiting their height and making long content scrollable.
-- Fixed tooltip scrolling errors caused by an invalid screen-coordinate API call.
+
+- Reduced large navigation tooltip resizing/flickering by completing text layout before showing the existing popup.
+- Fixed interactive text previews intercepting FileSystem dock clicks and double-clicks.
+- Fixed several issues with navigation tooltip closing, scroll-wheel routing, Markdown links and large popup layout.
+
+## 3.1.0 (unreleased development build; included in 3.2.0)
+
+### Improvements
+
+- Added documentation and method-source previews to Godot's built-in **Filter Methods** list and to function entries in Quill IDE and Script-IDE outlines. Methods without inline documentation show their source code directly.
+- Added support for both Godot 4.7's method list and Godot 4.8's grouped method tree.
+- Unified mouse-wheel scrolling for interactive text, Markdown and method-source tooltips across the FileSystem dock, Godot's script navigation, Quill IDE and Script-IDE. When a tooltip can scroll, the wheel scrolls the tooltip instead of the editor list behind it.
+- Unified tooltip lifetime handling for FileSystem text previews, navigation popups and add-on-owned Code Editor fallback popups, including grace timing and protection while dragging scrollbars.
+- Refactored the preview pipeline into separate generator, presenter, zoom, wheel-routing and lifetime components while keeping the pipeline as the public facade. This is an internal maintainability change with no intended feature loss.
+
+### Fixes
+
+- Fixed Quill IDE and Script-IDE outline tooltips closing while the pointer crosses a neighboring method on the way into the popup. A different method replaces the visible tooltip only after a stable hover; returning to the original entry or entering the popup cancels the pending switch.
+- Preserved the original hovered item rectangle through the popup delay, also for Godot's built-in Filter Methods list.
+- Fixed Markdown links displaying raw `[lb]`/BBCode fragments. HTTP(S), project-relative file links and in-document heading anchors are now rendered as interactive links, including links inside Markdown tables.
+- Preserved mouse input for clickable links in short Markdown previews, without changing shared popup scrolling or lifetime handling.
+- Included the `SUPPORT.md` referenced by the bundled README so its relative link has a valid target.
+- Fixed detection of Godot 4.7.2's built-in Filter Methods list and Godot 4.8's method tree.
+- Fixed wheel events scrolling the underlying Filter Methods, Quill IDE or Script-IDE list instead of a long open tooltip.
+- Fixed an invalid `RichTextLabel.get_screen_rect()` call when selecting the scrollable text section under the pointer.
+- Cleaned up navigation popups when their observed editor controls disappear, without affecting the other integrations.
+- Fixed Code Editor fallback tooltips closing immediately when moving the pointer from the code into the popup; scrollable fallback text now uses the shared wheel routing.
+- Prevented a visible graphical preview from consuming mouse-wheel input in unrelated editor areas.
+- Made the optional graphical zoom controller load independently so text previews and cached graphical previews can still work if zoom is unavailable.
+
+## 3.0.5
+### Preview improvements
+
+- Added Markdown pipe-table rendering with real RichTextLabel table cells, bold headers, borders, alternate row backgrounds, alignment and inline formatting.
+- Added a scrollable source-text preview for `.gd` files, including scripts without class-level documentation. For documented scripts, existing class help appears above the source preview.
+- Unified GDScript file tooltips with the existing live-text pipeline so the source and class help can remain interactive, scroll independently, and use the existing Escape/keyboard forwarding behavior.
+- Limited the combined height of class help plus source to prevent multi-section tooltips from overflowing the screen.
+
+### Fixes
+
+- Matched generic plain-text (`.txt`/`TextFile`) preview line and paragraph spacing to the compact Markdown renderer without changing font size or whitespace in the source file.
+- Fixed excessive vertical spacing in Markdown previews: compact theme line/paragraph separation, collapsed redundant blank lines, and removed extra paragraphs around headings, lists and fenced code blocks. The same Markdown file now fits substantially more content on screen without reducing the editor's document font size.
+- Preserved the richer Markdown presentation introduced during testing (more distinct headings and separators, styled quotes, code spans/blocks, links and ordered lists), now with denser VS Code-inspired spacing.
+- Improved keyboard handling for interactive text/Markdown tooltip popups: Escape closes the tooltip immediately; ordinary keys and function-key shortcuts close it and are forwarded to the Godot editor. Navigation/scroll keys and Ctrl+C for selected tooltip text remain handled by the tooltip.
 
 ## 3.0.1
 ### Fixes
@@ -75,7 +118,7 @@
 - Improved theme integration so add-on-owned documentation and preview sections follow Godot editor fonts, semantic colors and spacing.
 - Added numerous fixes for tooltip startup/rebinding, popup layout, clipping, wheel input, cache invalidation and integration stability.
 
-The minimum supported Godot version is now 4.7 (raised from 4.5).
+The minimum supported Godot version is 4.7.2 (raised from 4.5).
 
 ## 2.1.1
 

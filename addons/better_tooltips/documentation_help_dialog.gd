@@ -56,4 +56,5 @@ func _load_help_source() -> void:
 func _get_renderer() -> BTDocumentationRenderer:
 	if _renderer == null:
 		_renderer = DocumentationRenderer.new() as BTDocumentationRenderer
+		_renderer.use_tooltip_font_settings = false
 	return _renderer

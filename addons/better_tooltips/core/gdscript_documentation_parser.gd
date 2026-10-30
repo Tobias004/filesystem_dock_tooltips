@@ -66,6 +66,93 @@ static func find_member_documentation(
 	documentation["declaration_line"] = declaration_line
 	return documentation
 
+# Extracts one complete GDScript method, including its declaration and body.
+# No script is instantiated. A nearby outline line distinguishes methods of the
+# same name in different inner classes; indentation terminates the method body.
+# The original indentation is preserved to match the source editor.
+static func extract_method_source(
+	source: String,
+	symbol: String,
+	near_line: int = -1
+) -> Dictionary:
+	if source.is_empty() or symbol.is_empty():
+		return {}
+	var lines: PackedStringArray = source.replace("\r\n", "\n").split("\n")
+	var declaration := RegEx.create_from_string(
+		"^\\s*(?:(?:static|abstract)\\s+)*func\\s+([A-Za-z_][A-Za-z_0-9]*)\\s*\\("
+	)
+	var matches: Array[int] = []
+	for index in range(lines.size()):
+		var match := declaration.search(lines[index])
+		if match != null and match.get_string(1) == symbol:
+			matches.append(index)
+	if matches.is_empty():
+		return {}
+	var first_line: int = matches[0]
+	if near_line >= 0:
+		var nearest_distance := absi(first_line - near_line)
+		for candidate in matches:
+			var distance := absi(candidate - near_line)
+			if distance < nearest_distance:
+				first_line = candidate
+				nearest_distance = distance
+	var indentation := _leading_whitespace_count(lines[first_line])
+	var last_line := first_line
+	for index in range(first_line + 1, lines.size()):
+		var line: String = lines[index]
+		if line.strip_edges().is_empty():
+			continue
+		if _leading_whitespace_count(line) <= indentation:
+			break
+		last_line = index
+	# Include the method's last significant line, not the blank spacing before
+	# the following declaration or another class member.
+	return {
+		"text": "\n".join(lines.slice(first_line, last_line + 1)),
+		"line": first_line,
+		"end_line": last_line,
+	}
+
+# Documentation for a particular function declaration, including functions
+# inside inner classes. This avoids showing documentation from a different
+# function with the same name in another class.
+static func find_method_documentation_at_line(
+	source: String,
+	symbol: String,
+	declaration_line: int,
+	allow_documentation_comments: bool = true,
+	allow_single_hash: bool = true
+) -> Dictionary:
+	var lines := source.replace("\r\n", "\n").split("\n")
+	if declaration_line < 0 or declaration_line >= lines.size():
+		return {}
+	var declaration: String = lines[declaration_line]
+	var indentation := declaration.substr(0, declaration.length() - declaration.lstrip(" \t").length())
+	var start_line := declaration_line
+	while start_line > 0:
+		var preceding: String = lines[start_line - 1]
+		if not preceding.begins_with(indentation):
+			break
+		var stripped := preceding.substr(indentation.length()).strip_edges()
+		if stripped.begins_with("##") or stripped.begins_with("#") or stripped.begins_with("@"):
+			start_line -= 1
+		else:
+			break
+	var local_lines := PackedStringArray()
+	for index in range(start_line, declaration_line + 1):
+		var line: String = lines[index]
+		local_lines.append(line.substr(indentation.length()) if line.begins_with(indentation) else line)
+	var documentation := find_member_documentation(
+		"\n".join(local_lines),
+		symbol,
+		-1,
+		allow_documentation_comments,
+		allow_single_hash
+	)
+	if not documentation.is_empty():
+		documentation["declaration_line"] = declaration_line
+	return documentation
+
 # Resolves documentation for the script's own class_name. Godot's normal class
 # documentation position after class_name/extends is preferred for ## comments;
 # the legacy/pre-declaration position is also accepted. Optional single-# local

@@ -12,9 +12,8 @@ const Settings := preload(
 const TOOLTIP_PANEL_THEME_TYPE := &"TooltipPanel"
 const TOOLTIP_PANEL_STYLEBOX := &"panel"
 const GRAPHICAL_PREVIEW_PADDING := 8.0
-const MAX_TEXT_HEIGHT_SCREEN_FRACTION := 0.58
-const MAX_TEXT_HEIGHT := 620.0
-const MIN_SCROLLABLE_TEXT_HEIGHT := 180.0
+const MAX_TEXT_HEIGHT_SCREEN_FRACTION := 0.85
+const MAX_TEXT_WIDTH_SCREEN_FRACTION := 0.90
 
 # Applies the configured add-on contrast to an ordinary panel while otherwise
 # keeping Godot's current TooltipPanel style. Existing child layout is untouched.
@@ -86,6 +85,49 @@ static func style_graphical_preview_panel(panel: PanelContainer) -> void:
 	style.content_margin_bottom = 0.0
 	panel.add_theme_stylebox_override("panel", style)
 
+# Caps the outer dimensions of text-only content. This must not be used for
+# graphical previews, which retain their separate scale and wheel behavior.
+static func get_text_max_width_pixels() -> float:
+	var scale := EditorInterface.get_editor_scale()
+	var screen := _editor_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	var max_width := float(Settings.get_text_max_width()) * scale
+	if usable.size.x > 0:
+		max_width = minf(max_width, usable.size.x * MAX_TEXT_WIDTH_SCREEN_FRACTION)
+	return maxf(120.0 * scale, max_width)
+
+static func get_text_max_height_pixels() -> float:
+	var scale := EditorInterface.get_editor_scale()
+	var usable := DisplayServer.screen_get_usable_rect(_editor_screen())
+	var max_height := float(Settings.get_text_max_height()) * scale
+	if usable.size.y > 0:
+		max_height = minf(max_height, usable.size.y * MAX_TEXT_HEIGHT_SCREEN_FRACTION)
+	return maxf(80.0 * scale, max_height)
+
+# A PopupPanel's Window.size may be stale while it is hidden. The Control
+# contents have already measured their minimum size after layout frames, so
+# use the larger of the two before choosing which side of the cursor can fit.
+# The caller must then use popup(Rect2i(position, prepared_size)) to open it
+# without exposing an initial, too-small window that is moved on the next frame.
+static func prepared_text_popup_size(popup: PopupPanel) -> Vector2i:
+	if popup == null:
+		return Vector2i.ZERO
+	popup.reset_size()
+	var content := popup.get_contents_minimum_size()
+	return Vector2i(
+		maxi(popup.size.x, ceili(content.x)),
+		maxi(popup.size.y, ceili(content.y))
+	)
+
+static func text_content_width(desired_width: float) -> float:
+	return minf(desired_width, get_text_max_width_pixels() - 24.0 * EditorInterface.get_editor_scale())
+
+static func _editor_screen() -> int:
+	var editor_window := EditorInterface.get_base_control().get_window()
+	if editor_window != null and editor_window.current_screen >= 0:
+		return editor_window.current_screen
+	return DisplayServer.get_primary_screen()
+
 # Limits long add-on documentation blocks to a readable fraction of the current
 # screen. Short text keeps fit_content semantics; only genuinely tall text turns
 # into its own vertically scrollable RichTextLabel. Graphical preview sections are
@@ -109,20 +151,8 @@ static func limit_rich_text_height(label: RichTextLabel) -> void:
 static func _apply_rich_text_height_limit(label: RichTextLabel) -> void:
 	if label == null:
 		return
-	var editor_window := EditorInterface.get_base_control().get_window()
-	var screen := DisplayServer.get_primary_screen()
-	if editor_window != null and editor_window.current_screen >= 0:
-		screen = editor_window.current_screen
-	var usable_rect := DisplayServer.screen_get_usable_rect(screen)
-	var editor_scale := EditorInterface.get_editor_scale()
-	var screen_height := float(usable_rect.size.y)
-	var maximum_height := MAX_TEXT_HEIGHT * editor_scale
-	if screen_height > 0.0:
-		maximum_height = minf(
-			maximum_height,
-			screen_height * MAX_TEXT_HEIGHT_SCREEN_FRACTION
-		)
-	maximum_height = maxf(MIN_SCROLLABLE_TEXT_HEIGHT * editor_scale, maximum_height)
+	var maximum_height := maxf(65.0 * EditorInterface.get_editor_scale(),
+		get_text_max_height_pixels() - 95.0 * EditorInterface.get_editor_scale())
 	var content_height := float(label.get_content_height())
 	if content_height <= 0.0:
 		return
@@ -130,7 +160,8 @@ static func _apply_rich_text_height_limit(label: RichTextLabel) -> void:
 		label.fit_content = true
 		label.scroll_active = false
 		label.custom_minimum_size.y = 0.0
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Short Markdown previews still contain clickable hyperlinks.
+		label.mouse_filter = (Control.MOUSE_FILTER_STOP if label.has_meta("_bt_interactive_links") else Control.MOUSE_FILTER_IGNORE)
 		label.update_minimum_size()
 		return
 	label.fit_content = false

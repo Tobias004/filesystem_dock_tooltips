@@ -1,6 +1,6 @@
 # Better Tooltips
 
-Better Tooltips is a Godot 4.7+ editor add-on that extends tooltips throughout the editor with project documentation, resource previews, Markdown/text previews and optional IDE integrations.
+Better Tooltips is a Godot 4.7.2+ editor add-on that extends tooltips throughout the editor with project documentation, resource previews, Markdown/text previews and optional IDE integrations.
 
 The project was originally released as **FileSystem Dock Tooltips**. The GitHub repository keeps its existing `filesystem_dock_tooltips` URL so published links continue to work.
 
@@ -26,4 +26,13 @@ Markdown (.md / .markdown) and other Godot TextFile entries can be previewed dir
 
 ## Tooltip sizing
 
-Graphical previews use one shared wheel-zoom/layout path in FileSystem and code tooltips, including wheel input received while the pointer is directly over the tooltip popup. The configured default size controls the cached render; wheel zoom is temporary and cache-free. The effective maximum is constrained by the usable screen area, graphical previews never scroll, and resizing under the pointer preserves its relative position inside the tooltip except at small corner escape zones. Very long add-on documentation is height-limited and becomes vertically scrollable instead of growing indefinitely.
+Graphical previews use one shared wheel-zoom/layout path in FileSystem and code tooltips, including wheel input received while the pointer is directly over the tooltip popup. The configured default size controls the cached render; wheel zoom is temporary and cache-free. The effective maximum is constrained by the usable screen area, graphical previews never scroll, and resizing under the pointer preserves its relative position inside the tooltip except at small corner escape zones. Text and code tooltips have independent settings for font scale, maximum width and maximum height. At 100% the text font is one point smaller than the Godot theme. Long text becomes scrollable within the size limits. These settings do not affect graphical preview zoom.
+
+## Updating development versions
+
+Replace the complete `addons/better_tooltips` directory rather than overlaying files.
+Earlier internal builds contained experimental popup-transparency scripts
+(`core/windows_text_popup_reveal.gd` and `core/text_popup_delayed_reveal.gd`).
+Neither is used now. Delete any leftover `.gd` and `.gd.uid` files to avoid
+stale scripts or duplicate script UID warnings.
+

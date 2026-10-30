@@ -1,6 +1,6 @@
 # Better Tooltips
 
-**Better Tooltips** extends Godot 4.7+ with richer tooltips throughout the editor.
+**Better Tooltips** extends Godot 4.7.2+ with richer tooltips throughout the editor.
 ( The project was originally released as **FileSystem Dock Tooltips** )
 
 It adds project documentation, visual resource previews, Markdown/text previews and contextual information directly where you are already working - without opening additional files or inspectors.
@@ -59,11 +59,15 @@ ProjectSettings.get_setting(
 
 Hover `$Player`, `"ui_accept"` or the ProjectSettings key.
 
+## Standard Godot method overview
+
+Hovering a function in the built-in **Filter Methods** outline shows its documentation (when available) followed by a scrollable source-code preview of that function. Undocumented functions show their source directly. The integration supports Godot 4.7's method list and Godot 4.8's grouped method tree. While a scrollable tooltip is open, the mouse wheel scrolls its text instead of moving the underlying method list.
+
 ## Quill-IDE and Script-IDE Integration
 
 Better Tooltips optionally integrates with **Quill-IDE by Rayyan Aziz** and **Script-IDE by Marius Hanl**.
 
-Their script tabs and outline entries can show the same class/member documentation and resource previews used elsewhere in the editor.
+Their script tabs and outline entries can show the same class/member documentation and resource previews used elsewhere in the editor. Function entries also include a source-code preview, even when no documentation comment exists.
 
 The third-party plugins are only observed at runtime and are not modified.
 
@@ -119,6 +123,10 @@ For examples, open:
 
 The dialog uses the same renderer as the actual tooltips.
 
+## Updating an existing installation
+
+Replace the entire `addons/better_tooltips` folder instead of copying files over an older installation. This prevents leftover scripts and duplicate GDScript UID warnings.
+
 ## Settings
 
 Open:
@@ -130,6 +138,7 @@ The settings dialog lets you:
 - enable or disable individual tooltip modules
 - configure Code Editor documentation behavior
 - enable or disable Quill-IDE and Script-IDE integration
+- set text/code tooltip font scaling and maximum width/height (independently of graphical previews)
 - adjust graphical preview size
 - adjust tooltip background contrast
 - configure the preview safety limit
@@ -161,7 +170,7 @@ Then enable **Better Tooltips** under:
 
 `Project > Project Settings > Plugins`
 
-Better Tooltips requires **Godot 4.7 or newer**.
+Better Tooltips requires **Godot 4.7.2 or newer**.
 
 ## Upgrading from FileSystem Dock Tooltips 2.x
 

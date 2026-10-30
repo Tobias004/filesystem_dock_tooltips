@@ -8,6 +8,7 @@ extends RefCounted
 ## It is independent from source extraction and is shared by FileSystem class
 ## documentation, Code Editor member documentation and the local syntax help.
 
+const Settings := preload("res://addons/better_tooltips/tooltip_settings.gd")
 const EDITOR_HELP_THEME_TYPE := "EditorHelp"
 const EDITOR_THEME_TYPE := "Editor"
 const EDITOR_FONTS_THEME_TYPE := "EditorFonts"
@@ -70,6 +71,7 @@ const BUILTIN_DOCUMENTATION_TYPES := {
 	"Vector4i": true,
 }
 
+var use_tooltip_font_settings := true
 var _theme: Theme
 var _global_classes: Dictionary = {}
 
@@ -919,9 +921,10 @@ func _get_font(font_name: String) -> Font:
 
 # Reads one EditorHelp font size with a safe base-control fallback.
 func _get_font_size(font_size_name: String) -> int:
+	var base_size := EditorInterface.get_base_control().get_theme_font_size("font_size")
 	if _theme.has_font_size(font_size_name, EDITOR_FONTS_THEME_TYPE):
-		return _theme.get_font_size(font_size_name, EDITOR_FONTS_THEME_TYPE)
-	return EditorInterface.get_base_control().get_theme_font_size("font_size")
+		base_size = _theme.get_font_size(font_size_name, EDITOR_FONTS_THEME_TYPE)
+	return Settings.scale_text_font_size(base_size) if use_tooltip_font_settings else base_size
 
 # Reads an EditorHelp color with the base text color as fallback.
 func _get_color(color_name: String) -> Color:

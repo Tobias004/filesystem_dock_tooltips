@@ -27,6 +27,9 @@ const TooltipAppearance := preload(
 const NavigationTooltip := preload(
 	"res://addons/better_tooltips/modules/script_editor_navigation_tooltip.gd"
 )
+const TooltipLifetime := preload(
+	"res://addons/better_tooltips/core/tooltip_lifetime_manager.gd"
+)
 
 const TOOLTIP_PANEL_VARIATION := &"TooltipPanel"
 # Godot renamed these theme variations in newer 4.x releases. Supporting both
@@ -57,6 +60,7 @@ var _watched_editors: Dictionary = {}
 var _renderer: BTDocumentationRenderer = null
 var _navigation_tooltips: BTScriptEditorNavigationTooltip = null
 var _preview_pipeline: BTTooltipPipeline = null
+var _fallback_lifetime: BTTooltipLifetimeManager = null
 var _watch_refresh_timer: Timer = null
 var _refresh_attempts_remaining := 0
 var _refresh_burst_reason := ""
@@ -68,6 +72,8 @@ var _refresh_burst_reason := ""
 # CodeEdit while restoring or rearranging the editor UI.
 func setup(preview_pipeline: BTTooltipPipeline = null) -> void:
 	_preview_pipeline = preview_pipeline
+	if _fallback_lifetime == null:
+		_fallback_lifetime = TooltipLifetime.new() as BTTooltipLifetimeManager
 	_script_editor = EditorInterface.get_script_editor()
 	if _script_editor == null:
 		return
@@ -117,6 +123,9 @@ func cleanup() -> void:
 	for editor_id in _watched_editors.keys():
 		_disconnect_watched_editor(int(editor_id))
 	_watched_editors.clear()
+	if _fallback_lifetime != null:
+		_fallback_lifetime.clear()
+	_fallback_lifetime = null
 	if is_instance_valid(_watch_refresh_timer):
 		var refresh_timeout := Callable(self, "_on_watch_refresh_timer_timeout")
 		if _watch_refresh_timer.timeout.is_connected(refresh_timeout):
@@ -380,7 +389,16 @@ func _on_code_edit_gui_input(event: InputEvent, code_edit: CodeEdit) -> void:
 func _on_code_edit_mouse_exited(code_edit: CodeEdit) -> void:
 	if not is_instance_valid(code_edit):
 		return
-	_stop_fallback_for_editor(code_edit.get_instance_id(), true)
+	var editor_id := code_edit.get_instance_id()
+	var entry: Dictionary = _watched_editors.get(editor_id, {}) as Dictionary
+	var popup_reference := entry.get("popup_reference", null) as WeakRef
+	var popup := popup_reference.get_ref() as PopupPanel if popup_reference != null else null
+	# A visible fallback remains interactive while the pointer crosses into it.
+	# A pending fallback must still be cancelled when CodeEdit loses hover.
+	if is_instance_valid(popup) and _fallback_lifetime != null and _fallback_lifetime.has_popup(popup):
+		_stop_fallback_timer_for_editor(editor_id)
+		return
+	_stop_fallback_for_editor(editor_id, true)
 
 func _on_fallback_timer_timeout(code_edit: CodeEdit) -> void:
 	if not is_instance_valid(code_edit):
@@ -585,9 +603,13 @@ func _show_code_fallback(
 	entry["popup_reference"] = weakref(popup)
 	_watched_editors[editor_id] = entry
 	var local_mouse: Vector2 = code_edit.get_local_mouse_position()
-	popup.position = Vector2i(code_edit.get_screen_position() + local_mouse) + Vector2i(12, 20)
+	var popup_anchor := Vector2i(code_edit.get_screen_position() + local_mouse)
 	popup.reset_size()
-	popup.popup()
+	if resource_path.is_empty():
+		_show_fallback_after_layout(weakref(popup), popup_anchor)
+	else:
+		popup.position = popup_anchor + Vector2i(12, 20)
+		popup.popup()
 	if _preview_pipeline != null and not resource_path.is_empty():
 		_preview_pipeline.append_preview_for_path(
 			resource_path,
@@ -598,6 +620,57 @@ func _show_code_fallback(
 				"trigger_control": code_edit,
 			}
 		)
+	# Use the same hover/drag lifetime rules as FileSystem and navigation
+	# popups, but keep a separate manager so integrations fail independently.
+	if _fallback_lifetime != null:
+		_fallback_lifetime.register_popup(
+			popup, Rect2i(), code_edit, Callable(),
+			Callable(self, "_on_fallback_lifetime_expired").bind(
+				editor_id, popup.get_instance_id()
+			),
+			0.30, 0.04
+		)
+	# Forward the wheel only when the fallback actually has a scrollable area.
+	if _preview_pipeline != null:
+		_preview_pipeline.register_external_text_popup(popup, content, code_edit)
+
+# Add-on-owned text fallback windows can be fully measured before their first
+# visible frame. This does not intercept Godot's native help popups or graphics.
+func _show_fallback_after_layout(popup_ref: WeakRef, pointer: Vector2i) -> void:
+	var popup := popup_ref.get_ref() as PopupPanel if popup_ref != null else null
+	if not is_instance_valid(popup):
+		return
+	await popup.get_tree().process_frame
+	if not is_instance_valid(popup):
+		return
+	await popup.get_tree().process_frame
+	if not is_instance_valid(popup):
+		return
+	var prepared_size := TooltipAppearance.prepared_text_popup_size(popup)
+	var screen := popup.current_screen
+	if screen < 0:
+		screen = DisplayServer.get_primary_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	var margin := roundi(8.0 * EditorInterface.get_editor_scale())
+	var x := pointer.x + margin
+	var y := pointer.y + margin
+	if x + prepared_size.x > usable.end.x - margin:
+		x = pointer.x - prepared_size.x - margin
+	if y + prepared_size.y > usable.end.y - margin:
+		y = pointer.y - prepared_size.y - margin
+	var position := Vector2i(
+		clampi(x, usable.position.x + margin, maxi(usable.position.x + margin, usable.end.x - prepared_size.x - margin)),
+		clampi(y, usable.position.y + margin, maxi(usable.position.y + margin, usable.end.y - prepared_size.y - margin))
+	)
+	popup.popup(Rect2i(position, prepared_size))
+
+# Do not let a delayed expiry of an old popup close a newer one for the editor.
+func _on_fallback_lifetime_expired(editor_id: int, popup_id: int) -> void:
+	var entry: Dictionary = _watched_editors.get(editor_id, {}) as Dictionary
+	var reference := entry.get("popup_reference", null) as WeakRef
+	var popup := reference.get_ref() as PopupPanel if reference != null else null
+	if is_instance_valid(popup) and popup.get_instance_id() == popup_id:
+		_stop_fallback_for_editor(editor_id, true)
 
 func _calculate_fallback_width(
 	documentation: Dictionary,
@@ -606,9 +679,10 @@ func _calculate_fallback_width(
 ) -> float:
 	var editor_scale := EditorInterface.get_editor_scale()
 	var minimum_width := FALLBACK_MIN_WIDTH * editor_scale
-	var maximum_width := FALLBACK_MAX_WIDTH * editor_scale
+	var maximum_width := minf(FALLBACK_MAX_WIDTH * editor_scale, TooltipAppearance.text_content_width(2000.0 * editor_scale))
 	var available_width := EditorInterface.get_base_control().size.x * 0.65
-	maximum_width = maxf(minimum_width, minf(maximum_width, available_width))
+	maximum_width = maxf(120.0 * editor_scale, minf(maximum_width, available_width))
+	minimum_width = minf(minimum_width, maximum_width)
 	var font := renderer.get_document_font()
 	var font_size := renderer.get_document_font_size()
 	var plain_text := renderer.to_plain_text(str(documentation.get("description", "")))
@@ -668,6 +742,10 @@ func _close_fallback_popup_for_editor(editor_id: int) -> void:
 	var popup_reference := entry.get("popup_reference", null) as WeakRef
 	var popup := popup_reference.get_ref() as PopupPanel if popup_reference != null else null
 	if is_instance_valid(popup):
+		if _fallback_lifetime != null:
+			_fallback_lifetime.unregister_popup(popup)
+		if _preview_pipeline != null:
+			_preview_pipeline.unregister_external_text_popup(popup)
 		popup.hide()
 		popup.queue_free()
 	entry["popup_reference"] = null
@@ -736,6 +814,8 @@ func _finish_native_tooltip(
 	_close_fallback_popup_for_editor(code_edit.get_instance_id())
 	var native_title := help_controls["title"] as RichTextLabel
 	var native_content := help_controls["content"] as RichTextLabel
+	_apply_native_font_scale(native_title)
+	_apply_native_font_scale(native_content)
 	var hover_context := _get_symbol_context(code_edit, native_title)
 	if hover_context.is_empty():
 		_schedule_native_tooltip_fit(popup, native_content)
@@ -823,6 +903,22 @@ func _finish_native_tooltip(
 	# (e.g. a Camera2D engine-class description). Limit its native text and
 	# reposition after Godot and the injected sections have finished layout.
 	_schedule_native_tooltip_fit(popup, native_content)
+
+# Godot creates the Code Editor help bits itself. Apply the same text-only
+# scaling to its theme fonts without changing its markup, images or logic.
+func _apply_native_font_scale(label: RichTextLabel) -> void:
+	if label == null or label.has_meta("_bt_native_font_scaled"):
+		return
+	label.set_meta("_bt_native_font_scaled", true)
+	for size_name: String in [
+		"normal_font_size", "bold_font_size", "italics_font_size",
+		"bold_italics_font_size", "mono_font_size",
+	]:
+		var theme_size := label.get_theme_font_size(size_name)
+		if theme_size > 0:
+			label.add_theme_font_size_override(
+				size_name, Settings.scale_text_font_size(theme_size)
+			)
 
 func _schedule_native_tooltip_fit(popup: PopupPanel, content: RichTextLabel) -> void:
 	if not is_instance_valid(popup) or not is_instance_valid(content):

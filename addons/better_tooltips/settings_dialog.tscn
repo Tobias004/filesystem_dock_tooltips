@@ -6,7 +6,7 @@
 oversampling_override = 1.0
 title = "Better Tooltips Settings"
 initial_position = 1
-size = Vector2i(780, 814)
+size = Vector2i(780, 870)
 visible = true
 min_size = Vector2i(780, 600)
 ok_button_text = "Close"
@@ -136,6 +136,61 @@ themes darker. 0% keeps the native background brightness."
 max_value = 30.0
 value = 5.0
 suffix = " %"
+
+[node name="lblTextSizing" type="Label" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+text = "Text & code tooltips"
+
+[node name="TextFontRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+
+[node name="lblTextFont" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Font scale"
+
+[node name="spnTextFont" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+min_value = 50.0
+max_value = 200.0
+step = 5.0
+value = 100.0
+suffix = " %"
+
+[node name="TextWidthRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+
+[node name="lblTextWidth" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Max width"
+
+[node name="spnTextWidth" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+min_value = 240.0
+max_value = 2000.0
+step = 20.0
+value = 760.0
+suffix = " px"
+
+[node name="TextHeightRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+
+[node name="lblTextHeight" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Max height"
+
+[node name="spnTextHeight" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+min_value = 160.0
+max_value = 1600.0
+step = 20.0
+value = 620.0
+suffix = " px"
 
 [node name="HSeparatorCache" type="HSeparator" parent="MarginContainer/Columns/DocumentationColumn" unique_id=965448416]
 layout_mode = 2

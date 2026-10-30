@@ -41,6 +41,10 @@ const TOOLTIP_WRAP_COLUMNS := 64
 	$MarginContainer/Columns/PreviewColumn/PreviewSizeRow/spnPreviewSize
 )
 
+@onready var _text_font_spin: SpinBox = $MarginContainer/Columns/DocumentationColumn/TextFontRow/spnTextFont
+@onready var _text_width_spin: SpinBox = $MarginContainer/Columns/DocumentationColumn/TextWidthRow/spnTextWidth
+@onready var _text_height_spin: SpinBox = $MarginContainer/Columns/DocumentationColumn/TextHeightRow/spnTextHeight
+
 var _checkboxes: Dictionary = {}
 
 # Connects all settings controls once the dialog enters the editor tree and adds
@@ -82,10 +86,18 @@ func _ready() -> void:
 		_on_preview_safety_limit_changed
 	)
 	_preview_size_spin.value_changed.connect(_on_preview_size_changed)
+	_text_font_spin.value_changed.connect(func(value: float) -> void: Settings.set_text_font_percent(roundi(value)))
+	_text_width_spin.value_changed.connect(func(value: float) -> void: Settings.set_text_max_width(roundi(value)))
+	_text_height_spin.value_changed.connect(func(value: float) -> void: Settings.set_text_max_height(roundi(value)))
 	_clear_cache_button.pressed.connect(_on_clear_caches_pressed)
 	ok_button_text = "Close"
 	var enable_all_button := add_button("Enable All", false, "enable_all")
 	var disable_all_button := add_button("Disable All", false, "disable_all")
+	var reset_button := add_button("Reset to Defaults", false, "reset_defaults")
+	reset_button.tooltip_text = _wrap_tooltip(
+		"Restore all Better Tooltips settings for this project, including modules, appearance, and preview settings. Does not clear cached previews."
+	)
+
 	_configure_setting_tooltips(enable_all_button, disable_all_button)
 	custom_action.connect(_on_custom_action)
 	refresh()
@@ -119,6 +131,9 @@ func refresh() -> void:
 	)
 	_safety_limit_spin.set_value_no_signal(Settings.get_preview_safety_limit_ms())
 	_preview_size_spin.set_value_no_signal(Settings.get_preview_size_percent())
+	_text_font_spin.set_value_no_signal(Settings.get_text_font_percent())
+	_text_width_spin.set_value_no_signal(Settings.get_text_max_width())
+	_text_height_spin.set_value_no_signal(Settings.get_text_max_height())
 
 # Persists one module checkbox and tells the controller to apply the change to
 # the current editor integration immediately.
@@ -218,6 +233,32 @@ func _set_all(enabled: bool) -> void:
 		module_setting_changed.emit(module_id, enabled)
 	_update_code_editor_option_availability()
 
+# Confirm this destructive settings action; settings are applied immediately
+# elsewhere in the dialog, so resetting must not be triggered by mistake.
+func _confirm_reset_defaults() -> void:
+	var confirmation := ConfirmationDialog.new()
+	confirmation.title = "Reset Better Tooltips Settings"
+	confirmation.dialog_text = "Reset all Better Tooltips settings for this project to their defaults?"
+	confirmation.ok_button_text = "Reset"
+	add_child(confirmation)
+	confirmation.confirmed.connect(_reset_to_defaults)
+	confirmation.close_requested.connect(confirmation.queue_free)
+	confirmation.canceled.connect(confirmation.queue_free)
+	confirmation.confirmed.connect(confirmation.queue_free, CONNECT_DEFERRED)
+	confirmation.popup_centered()
+
+func _reset_to_defaults() -> void:
+	var prior_modules := {}
+	for module_id in _checkboxes:
+		prior_modules[module_id] = Settings.is_module_enabled(module_id)
+	Settings.reset_to_defaults()
+	refresh()
+	for module_id in _checkboxes:
+		var enabled := Settings.is_module_enabled(module_id)
+		if bool(prior_modules[module_id]) != enabled:
+			module_setting_changed.emit(module_id, enabled)
+	code_editor_integration_settings_changed.emit()
+
 # Adds explanatory hover text to every actual setting, including the less
 # obvious cache/safety controls, so the dialog is understandable on its own.
 func _configure_setting_tooltips(
@@ -283,6 +324,18 @@ func _configure_setting_tooltips(
 		],
 		"Default render size for cached graphical previews. While a graphical tooltip is visible, use the mouse wheel to resize only that hover temporarily; temporary zoom renders are never written to the cache. The live maximum is reduced automatically when necessary to keep the complete graphical tooltip within a manageable portion of the current screen."
 	)
+	_set_shared_tooltip(
+		[$MarginContainer/Columns/DocumentationColumn/TextFontRow/lblTextFont, _text_font_spin],
+		"Scales text and code tooltip fonts relative to the current Godot theme. 100% means one point smaller than the theme font. Graphical previews are unaffected."
+	)
+	_set_shared_tooltip(
+		[$MarginContainer/Columns/DocumentationColumn/TextWidthRow/lblTextWidth, _text_width_spin],
+		"Maximum width of text and code tooltip content in logical editor pixels. Also limited by the current screen. Graphical previews are unaffected."
+	)
+	_set_shared_tooltip(
+		[$MarginContainer/Columns/DocumentationColumn/TextHeightRow/lblTextHeight, _text_height_spin],
+		"Maximum height of text and code tooltips in logical editor pixels. Longer descriptions and source code scroll rather than being cut off. Graphical previews are unaffected."
+	)
 	enable_all_button.tooltip_text = _wrap_tooltip(
 		"Enable every tooltip module for this project."
 	)
@@ -328,3 +381,5 @@ func _on_custom_action(action: StringName) -> void:
 			_set_all(true)
 		&"disable_all":
 			_set_all(false)
+		&"reset_defaults":
+			_confirm_reset_defaults()

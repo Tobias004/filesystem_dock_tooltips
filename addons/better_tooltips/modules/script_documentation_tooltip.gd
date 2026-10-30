@@ -338,10 +338,11 @@ func _calculate_tooltip_width(
 ) -> float:
 	var editor_scale := EditorInterface.get_editor_scale()
 	var minimum_width := MIN_TOOLTIP_WIDTH * editor_scale
-	var maximum_width := MAX_TOOLTIP_WIDTH * editor_scale
+	var maximum_width := minf(MAX_TOOLTIP_WIDTH * editor_scale, TooltipAppearance.text_content_width(2000.0 * editor_scale))
 	var available_width := EditorInterface.get_base_control().size.x * 0.65
 	maximum_width = min(maximum_width, available_width)
-	maximum_width = max(maximum_width, minimum_width)
+	maximum_width = max(120.0 * editor_scale, maximum_width)
+	minimum_width = min(minimum_width, maximum_width)
 	var document_font: Font = renderer.get_document_font()
 	var document_font_size: int = renderer.get_document_font_size()
 	var plain_text: String = renderer.to_plain_text(

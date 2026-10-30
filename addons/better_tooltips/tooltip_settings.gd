@@ -15,6 +15,13 @@ const LEGACY_SETTINGS_SECTION := "filesystem_dock_tooltips"
 const MISSING_METADATA_SENTINEL := "__better_tooltips_missing_metadata__"
 const PREVIEW_SAFETY_LIMIT_KEY := "preview_safety_limit_ms"
 const PREVIEW_SIZE_PERCENT_KEY := "preview_size_percent"
+# Text-only settings: no effect on bitmap previews or wheel zoom.
+const TEXT_FONT_PERCENT_KEY := "text_font_percent"
+const TEXT_MAX_WIDTH_KEY := "text_max_width"
+const TEXT_MAX_HEIGHT_KEY := "text_max_height"
+const DEFAULT_TEXT_FONT_PERCENT := 100
+const DEFAULT_TEXT_MAX_WIDTH := 760
+const DEFAULT_TEXT_MAX_HEIGHT := 620
 const PREVIEW_SCALE_METADATA_KEY := "_bt_preview_scale"
 const DOCUMENTATION_COMMENTS_KEY := "code_editor_documentation_comments"
 const SINGLE_HASH_MEMBER_DOCUMENTATION_KEY := "single_hash_member_documentation"
@@ -64,6 +71,31 @@ const MODULE_DEFAULTS := {
 	MODULE_ENVIRONMENT_PREVIEW: true,
 	MODULE_SKY_PREVIEW: true,
 }
+
+# Restores the complete project-local configuration. Write explicit defaults
+# instead of removing metadata: otherwise 2.x legacy values would be imported
+# again on the next read and silently undo the reset.
+static func reset_to_defaults() -> void:
+	var editor_settings := EditorInterface.get_editor_settings()
+	for module_id: String in MODULE_DEFAULTS:
+		editor_settings.set_project_metadata(
+			SETTINGS_SECTION, module_id, bool(MODULE_DEFAULTS[module_id])
+		)
+	var defaults := {
+		PREVIEW_SAFETY_LIMIT_KEY: DEFAULT_PREVIEW_SAFETY_LIMIT_MS,
+		PREVIEW_SIZE_PERCENT_KEY: DEFAULT_PREVIEW_SIZE_PERCENT,
+		TEXT_FONT_PERCENT_KEY: DEFAULT_TEXT_FONT_PERCENT,
+		TEXT_MAX_WIDTH_KEY: DEFAULT_TEXT_MAX_WIDTH,
+		TEXT_MAX_HEIGHT_KEY: DEFAULT_TEXT_MAX_HEIGHT,
+		DOCUMENTATION_COMMENTS_KEY: DEFAULT_DOCUMENTATION_COMMENTS,
+		SINGLE_HASH_MEMBER_DOCUMENTATION_KEY: DEFAULT_SINGLE_HASH_MEMBER_DOCUMENTATION,
+		REPLACE_GODOT_MEMBER_DOCUMENTATION_KEY: DEFAULT_REPLACE_GODOT_MEMBER_DOCUMENTATION,
+		TOOLTIP_BACKGROUND_CONTRAST_KEY: DEFAULT_TOOLTIP_BACKGROUND_CONTRAST_PERCENT,
+		QUILL_IDE_INTEGRATION_KEY: DEFAULT_QUILL_IDE_INTEGRATION,
+		SCRIPT_IDE_INTEGRATION_KEY: DEFAULT_SCRIPT_IDE_INTEGRATION,
+	}
+	for key: String in defaults:
+		editor_settings.set_project_metadata(SETTINGS_SECTION, key, defaults[key])
 
 # Reads project metadata from the Better Tooltips namespace. When upgrading from
 # FileSystem Dock Tooltips 2.x, an existing value is copied lazily from the old
@@ -131,6 +163,37 @@ static func set_preview_safety_limit_ms(limit_ms: int) -> void:
 		SETTINGS_SECTION,
 		PREVIEW_SAFETY_LIMIT_KEY,
 		maxi(0, limit_ms)
+	)
+
+# Text sizing is relative to Godot's current document/source font. At 100%,
+# Better Tooltips uses one point less than Godot's theme size.
+static func get_text_font_percent() -> int:
+	return clampi(int(_get_project_metadata(TEXT_FONT_PERCENT_KEY, DEFAULT_TEXT_FONT_PERCENT)), 50, 200)
+
+static func set_text_font_percent(percent: int) -> void:
+	EditorInterface.get_editor_settings().set_project_metadata(
+		SETTINGS_SECTION, TEXT_FONT_PERCENT_KEY, clampi(percent, 50, 200)
+	)
+
+static func scale_text_font_size(theme_size: int) -> int:
+	return maxi(6, roundi(maxi(1, theme_size - 1) * get_text_font_percent() / 100.0))
+
+# User-facing maximums are logical editor pixels; actual limits account for
+# editor UI scale and available screen area at display time.
+static func get_text_max_width() -> int:
+	return clampi(int(_get_project_metadata(TEXT_MAX_WIDTH_KEY, DEFAULT_TEXT_MAX_WIDTH)), 240, 2000)
+
+static func set_text_max_width(width: int) -> void:
+	EditorInterface.get_editor_settings().set_project_metadata(
+		SETTINGS_SECTION, TEXT_MAX_WIDTH_KEY, clampi(width, 240, 2000)
+	)
+
+static func get_text_max_height() -> int:
+	return clampi(int(_get_project_metadata(TEXT_MAX_HEIGHT_KEY, DEFAULT_TEXT_MAX_HEIGHT)), 160, 1600)
+
+static func set_text_max_height(height: int) -> void:
+	EditorInterface.get_editor_settings().set_project_metadata(
+		SETTINGS_SECTION, TEXT_MAX_HEIGHT_KEY, clampi(height, 160, 1600)
 	)
 
 # Returns the project-local default render size for cached graphical previews.
