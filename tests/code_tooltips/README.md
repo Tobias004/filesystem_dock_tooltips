@@ -48,3 +48,40 @@ Full NodePath resolution depends on the currently edited scene and is therefore 
 ### Quill / Script-IDE graphical outline regression
 
 `test_navigation_resource_preview.gd` runs in editor context and mirrors the public outline metadata used by Quill (`Tree`) and Script-IDE (`ItemList`). It verifies that a Resource alias resolves through the same source parser as CodeEdit, that a shared Material preview is actually inserted into the navigation popup, and that popup-window mouse-wheel zoom uses the central preview pipeline. Run it with a graphical backend (X11/Xvfb is sufficient).
+
+## FileSystem GDScript documentation regression
+
+Run in editor context:
+
+```sh
+Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --script res://tests/code_tooltips/test_filesystem_script_documentation.gd
+```
+
+This focused test checks that the FileSystem documentation module delegates to the shared parser for named and unnamed scripts (both common `##` placements), displays Implementation Notes, retains the source preview and does not invent documentation for undocumented scripts.
+
+## Code Editor native-popup handoff and layout
+
+The following targeted regression checks that a detected native help bit blocks
+its fallback for the same hover, and that live Script Documentation and optional
+Component Documentation receive **one final native fit** after both finish. It
+also verifies that the fallback and native paths keep ownership of their popups.
+
+```sh
+Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --script res://tests/code_tooltips/test_code_editor_native_single_fit.gd
+Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --script res://tests/code_tooltips/test_code_editor_live_popup_ownership.gd
+```
+
+A real Godot native tooltip can still be recreated by the engine itself; check
+`CodeTooltip` and `NavigationTooltip` manually under Windows after installation.
+
+## Quill / Script-IDE / stock outline scrollbar & focus
+
+`test_navigation_popup_input.gd` checks the shared item-scoped lifetime for
+Quill's Tree, Script-IDE's ItemList and Godot's stock method list. It confirms
+that source scrollbars are excluded from the hover region and that the add-on
+navigation popup does not use Godot's exclusive popup flag or capture keyboard
+focus. This test does not simulate an operating-system global shortcut.
+
+```sh
+Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path . --script res://tests/code_tooltips/test_navigation_popup_input.gd
+```

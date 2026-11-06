@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/components/osc_repo_cockpit_view.gd" id="1_script"]
+
+[node name="CockpitView" type="Control"]
+script = ExtResource("1_script")

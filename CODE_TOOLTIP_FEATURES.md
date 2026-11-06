@@ -6,6 +6,27 @@ For project code, the add-on uses its own documentation renderer. This preserves
 
 > In the examples below, `^` marks the cursor position that triggers the tooltip.
 
+## Implementation notes in class documentation
+
+A class can document technical decisions separately from its behavior without
+introducing any runtime metadata or requiring `COMPONENT_CONTRACT`:
+
+```gdscript
+class_name OSCReceiver
+extends Node
+
+## Receives and validates OSC messages.
+## [color=#888888][i]Implementation notes[/i][br]
+## Transport and routing are independent so either can be replaced.
+## [/color]
+```
+
+The shared documentation parser exposes `description` and `implementation_notes`
+independently. The regular class description remains above a muted notes section
+with a narrow vertical theme-colored rule. The source BBCode stays compatible
+with Godot's native help renderer. Regular `##` and `#` documentation markup
+and existing component contracts continue to work.
+
 ## Where code tooltips can appear
 
 ### Inside the Code Editor
@@ -107,6 +128,19 @@ Only source references that can be resolved safely are followed. A variable assi
 
 Direct quoted project-file strings are also supported when an enabled preview module recognizes the referenced path. This includes Markdown and generic `TextFile` previews, so `const README_PATH := "res://README.md"` can be hovered as a symbol, direct literal, compatible Quill/Script-IDE outline member, Godot open-file entry, or compatible IDE top tab. Short alias chains use the same source-only resolver. Markdown/text previews stay as one shared live RichTextLabel-based UI in every host, use normal editor font sizing, scroll when tall, and never use graphical wheel zoom.
 
+### Optional component reference for scene resources (3.3.0)
+
+If **Component documentation (opt-in)** is enabled in Better Tooltips settings, a referenced `.tscn`, `.scn` or `.gd` resource declaring `COMPONENT_CONTRACT` can show its component API in the same rich-text preview pipeline:
+
+```gdscript
+const STATUS_WIDGET := preload("res://ui/status_widget.tscn")
+      ^
+```
+
+The scene's **root script** (or an inherited script) must declare a version 1 contract. Its `required` and `optional` entries describe exported properties; signals, documented public methods and `##` comments are extracted from the script. For a scene-file reference, saved property assignments are shown. The feature **does not render a visual preview of the scene**, instantiate nodes or validate required dependencies.
+
+The Scene dock uses the same popup for the **currently edited node**, including unsaved Inspector values for contracted components. Ordinary script descriptions and Implementation notes also appear there for attached scripts without a component contract whenever GDScript documentation is enabled (the default). Version-specific NodePath resolution supports Godot 4.7.2 and 4.8-beta2. See [Tooltip modules](MODULES.md#scene-component-documentation-330) for implementation details and the [add-on README](addons/better_tooltips/README.md#scene-component-documentation-330-opt-in) for setup.
+
 ### Input actions
 
 Hover action-name strings used by common `Input`/`InputMap` calls:
@@ -199,6 +233,7 @@ Script-IDE support can also be disabled independently.
 | Project `class_name` tooltip fallback | Limited | Yes |
 | Resolve `preload()` / `load()` script aliases | Limited | Yes |
 | Visual previews for supported resource references in code and compatible IDE outlines | No | Yes |
+| Component documentation for contracted scene/script references (opt-in) | No | Yes |
 | Direct preview on `preload()` / `load()` path strings | No | Yes |
 | Follow simple Resource aliases | No | Yes |
 | Input action details on action strings | No | Yes |

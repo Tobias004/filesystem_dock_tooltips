@@ -140,12 +140,17 @@ func _refresh_tooltip_layout_deferred(base_ref: WeakRef, target_ref: WeakRef) ->
 	_refresh_tooltip_layout_pass(base, resize_target)
 
 func _refresh_tooltip_layout_pass(base: Control, resize_target: Node = null) -> void:
+	var defer_native_fit := (
+		resize_target is PopupPanel
+		and resize_target.has_meta("_bt_code_native_live_layout_pending")
+	)
 	if is_instance_valid(base):
 		base.update_minimum_size()
-		base.reset_size()
+		if not defer_native_fit:
+			base.reset_size()
 		if base.has_method("queue_sort"):
 			base.call("queue_sort")
-	if not is_instance_valid(resize_target) or resize_target == base:
+	if not is_instance_valid(resize_target) or resize_target == base or defer_native_fit:
 		return
 	if resize_target is Control:
 		var resize_control := resize_target as Control

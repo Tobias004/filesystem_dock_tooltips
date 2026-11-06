@@ -174,11 +174,77 @@ func render_document(
 			label.newline()
 		_append_markup(label, description, context_class, interactive)
 		wrote_content = true
+	var notes := str(documentation.get("implementation_notes", ""))
+	if not notes.strip_edges().is_empty():
+		if wrote_content:
+			label.newline()
+		_append_implementation_notes(label, notes, context_class, interactive)
+		wrote_content = true
 	var tutorials: Array = documentation.get("tutorials", [])
 	if not tutorials.is_empty():
 		if wrote_content:
 			label.newline()
 		_append_tutorials(label, tutorials, interactive)
+
+
+# Uses one two-column RichTextLabel table for an entire secondary section.
+# Both the continuous rule and the muted text color come from the current theme.
+# Contract sections keep their signatures prominent and mute only descriptions.
+func begin_document_inset(label: RichTextLabel) -> void:
+	var scale := EditorInterface.get_editor_scale()
+	var stripe_color := _get_editor_color("accent_color")
+	stripe_color.a *= 0.38
+	label.add_theme_constant_override("table_h_separation", 3)
+	label.push_table(2)
+	label.set_table_column_expand(0, false)
+	label.set_table_column_expand(1, true)
+	label.push_cell()
+	label.set_cell_size_override(Vector2(maxf(2.0, 2.0 * scale), -1.0), Vector2(maxf(2.0, 2.0 * scale), -1.0))
+	label.set_cell_padding(Rect2(0.0, 0.0, 0.0, 0.0))
+	label.set_cell_row_background_color(stripe_color, stripe_color)
+	label.pop() # stripe cell
+	label.push_cell()
+	label.set_cell_padding(Rect2(9.0 * scale, 0.0, 0.0, 0.0))
+
+func end_document_inset(label: RichTextLabel) -> void:
+	label.pop() # text cell
+	label.pop() # table
+
+func _muted_text_color() -> Color:
+	var color := _get_color("text_color")
+	color.a *= 0.72
+	return color
+
+# The standard Implementation notes and the contract API share exactly the
+# same continuous left rule; only the former mutes its entire section.
+func _append_implementation_notes(
+	label: RichTextLabel,
+	markup: String,
+	context_class: String,
+	interactive: bool
+) -> void:
+	begin_document_inset(label)
+	label.push_color(_muted_text_color())
+	label.push_font(_get_font("doc_italic"))
+	label.add_text("Implementation notes")
+	label.pop()
+	label.newline()
+	_append_markup(label, markup, context_class, interactive)
+	label.pop() # muted color
+	end_document_inset(label)
+
+# Append extra structured sections without clearing already-rendered content.
+func append_document_markup(
+	label: RichTextLabel, markup: String, context_class: String = ""
+) -> void:
+	_append_markup(label, markup, context_class, false)
+
+func append_document_secondary_markup(
+	label: RichTextLabel, markup: String, context_class: String = ""
+) -> void:
+	label.push_color(_muted_text_color())
+	_append_markup(label, markup, context_class, false)
+	label.pop()
 
 # Renders standalone Godot documentation markup. This is used by the built-in
 # syntax help dialog and is intentionally the same code path as tooltip content.

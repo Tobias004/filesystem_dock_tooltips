@@ -1,0 +1,25 @@
+[b]Show single # comment blocks[/b]
+
+This is an add-on specific extension. When enabled, a normal contiguous [code]#[/code] comment block directly above a supported declaration is treated as local tooltip documentation.
+
+[b]When to use it[/b]
+
+Use this for editor-facing implementation notes that should help while coding, but should [b]not[/b] become formal Godot API documentation.
+
+[codeblock lang=gdscript]
+# Creates the editor-only preview controller.
+# The inherited engine description remains visible below.
+func _enter_tree() -> void:
+    pass
+[/codeblock]
+
+[b]How it looks[/b]
+
+[codeblock lang=text]
+_enter_tree() -> void
+
+Creates the editor-only preview controller.
+The inherited engine description remains visible below.
+[/codeblock]
+
+Single-[code]#[/code] comments are used only by Better Tooltips and do not change Godot's own class reference output.

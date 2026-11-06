@@ -15,7 +15,8 @@ func register_popup(
 	source_hover_callback: Callable,
 	exit_callback: Callable,
 	grace_seconds: float = 0.30,
-	poll_seconds: float = 0.04
+	poll_seconds: float = 0.04,
+	item_only_source_hover: bool = false
 ) -> void:
 	if not is_instance_valid(popup):
 		return
@@ -34,6 +35,7 @@ func register_popup(
 		"popup": weakref(popup),
 		"source": weakref(source_control) if is_instance_valid(source_control) else null,
 		"trigger_rect": trigger_rect,
+		"item_only_source_hover": item_only_source_hover,
 		"source_hover_callback": source_hover_callback,
 		"exit_callback": exit_callback,
 		"last_inside_msec": Time.get_ticks_msec(),
@@ -124,8 +126,9 @@ func _poll_popup(popup_id: int) -> void:
 		if not is_instance_valid(source) or not source.is_inside_tree():
 			_expire_popup(popup_id, session)
 			return
-		var local_mouse := source.get_local_mouse_position()
-		in_source = Rect2(Vector2.ZERO, source.size).has_point(local_mouse)
+		in_source = _source_hover_is_valid(
+			source, pointer, source.get_local_mouse_position(), session
+		)
 	else:
 		var trigger_rect := session.get("trigger_rect", Rect2i()) as Rect2i
 		in_source = trigger_rect.grow(2).has_point(pointer)
@@ -140,6 +143,30 @@ func _poll_popup(popup_id: int) -> void:
 	_sessions[popup_id] = session
 	if now - int(session.get("last_inside_msec", now)) >= int(session.get("grace_msec", 300)):
 		_expire_popup(popup_id, session)
+
+# Keep navigation tooltips alive only over their original item, never over
+# the list's scrollbar. Other popup sources retain their existing full-Control
+# hover behavior. The explicit coordinates also make this rule testable without
+# moving the real mouse cursor.
+func _source_hover_is_valid(
+	source: Control, pointer: Vector2i, local_mouse: Vector2,
+	session: Dictionary
+) -> bool:
+	if not Rect2(Vector2.ZERO, source.size).has_point(local_mouse):
+		return false
+	if not bool(session.get("item_only_source_hover", false)):
+		return true
+	var trigger_rect := session.get("trigger_rect", Rect2i()) as Rect2i
+	if not trigger_rect.grow(2).has_point(pointer):
+		return false
+	# Tree and ItemList both contain internal ScrollBar children. An item's
+	# rectangle may overlap a scrollbar, depending on the Godot version.
+	for child in source.get_children(true):
+		if child is ScrollBar:
+			var bar := child as ScrollBar
+			if bar.is_visible_in_tree() and Rect2(bar.position, bar.size).has_point(local_mouse):
+				return false
+	return true
 
 func _expire_popup(popup_id: int, session: Dictionary) -> void:
 	var exit_callback: Callable = session.get("exit_callback", Callable())

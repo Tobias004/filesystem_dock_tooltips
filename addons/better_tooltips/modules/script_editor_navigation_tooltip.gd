@@ -952,6 +952,9 @@ func _show_documentation_popup(
 	popup.name = POPUP_NAME
 	popup.theme_type_variation = TOOLTIP_PANEL_VARIATION
 	popup.wrap_controls = true
+	# A navigation tooltip must not grab input from the IDE scrollbar or block
+	# application-wide shortcuts while the pointer is outside this window.
+	popup.set_flag(Window.FLAG_POPUP, false)
 	popup.set_flag(Window.FLAG_NO_FOCUS, true)
 	var popup_parent := EditorInterface.get_base_control()
 	if is_instance_valid(popup_parent):
@@ -1042,7 +1045,7 @@ func _register_navigation_popup_lifetime(
 			popup, trigger_rect, control,
 			Callable(self, "_on_navigation_popup_source_hover").bind(control_id),
 			Callable(self, "_on_navigation_popup_lifetime_expired").bind(control_id),
-			0.22, 0.05
+			0.22, 0.05, true
 		)
 
 # A navigation popup belongs to the *hovered item*, not to the entire

@@ -98,6 +98,10 @@ func add_module(
 		return
 	if not _modules.has(module_id):
 		_module_order.append(module_id)
+	# Live component references reuse the shared cache lifecycle and the
+	# Settings dialog's existing Clear Tooltip Caches action.
+	if plugin.has_method("setup_cache"):
+		plugin.call("setup_cache", _cache)
 	_modules[module_id] = {
 		"name": module_name,
 		"plugin": plugin,
@@ -193,13 +197,19 @@ func append_preview_for_path(
 # preview. Navigational hosts use this to wait for text layout before opening
 # their already-owned popup window.
 func supports_live_text_preview_path(path: String) -> bool:
+	return count_live_text_preview_modules(path) > 0
+
+# Allows Code Editor native popups to wait for all matching live sections before
+# their one final resize (GDScript and optional component docs can both match).
+func count_live_text_preview_modules(path: String) -> int:
 	var preview_context := _get_path_preview_context(path)
+	var count := 0
 	for module_id in preview_context.get("module_ids", []) as Array[String]:
 		var module_entry: Dictionary = _modules.get(module_id, {})
 		var plugin := module_entry.get("plugin", null) as EditorResourceTooltipPlugin
 		if plugin != null and plugin.has_method("is_live_preview") and bool(plugin.call("is_live_preview")):
-			return true
-	return false
+			count += 1
+	return count
 
 # Reports whether the currently enabled preview modules can render the supplied
 # resource reference. This is used by Code Editor fallback logic before creating
@@ -280,7 +290,9 @@ func _serve_module(
 	if plugin.has_method("is_live_preview") and bool(plugin.call("is_live_preview")):
 		# Older development builds stored text as PNGs. Remove that module/path entry lazily
 		# the first time it is hovered after upgrading; live text never writes it back.
-		if _cache != null:
+		if _cache != null and module_id != Settings.MODULE_COMPONENT_DOCUMENTATION:
+			# Component references have their own timestamp-based RAM cache;
+			# never calculate graphical preview signatures for these hovers.
 			_cache.invalidate_preview(path, module_id)
 		_append_live_preview(
 			module_id,
@@ -650,12 +662,20 @@ func _append_live_preview(
 	_presenter.remove_generated_separators(body)
 	if result == null or body.get_child_count() == 0:
 		section.queue_free()
+		var ready_callback: Variant = metadata.get("layout_ready_callback", null)
+		if ready_callback is Callable and (ready_callback as Callable).is_valid():
+			(ready_callback as Callable).call_deferred()
 		return
 	# A native popup may already be visible while text layout is deferred.
 	# Keep its contents hidden until transfer to the fully measured popup.
 	if not (resize_target is PopupPanel):
 		base.modulate.a = 0.0
-	_presenter.refresh_tooltip_layout(base, resize_target)
+	# Native Code Editor help windows are owned and positioned by Godot.
+	# An interim presenter refresh can resize/reposition them while the live
+	# RichText content is still growing, making the editor lose mouse hover.
+	# The host performs its single final fit through layout_ready_callback.
+	if str(live_metadata.get("bt_code_editor_host", "")) != "native":
+		_presenter.refresh_tooltip_layout(base, resize_target)
 	_finalize_live_text_section.call_deferred(
 		weakref(section),
 		weakref(base),
@@ -700,7 +720,12 @@ func _finalize_live_text_section(
 			base.modulate.a = 1.0
 		return
 	await editor_tree.process_frame
-	if not is_instance_valid(section):
+	base = base_ref.get_ref() as Control if base_ref != null else null
+	resize_target = resize_target_ref.get_ref() as Node if resize_target_ref != null else null
+	if (
+		not is_instance_valid(section) or not is_instance_valid(base)
+		or (resize_target_ref != null and not is_instance_valid(resize_target))
+	):
 		return
 	for candidate: Node in section.find_children("*", "RichTextLabel", true, false):
 		var label := candidate as RichTextLabel
@@ -710,12 +735,32 @@ func _finalize_live_text_section(
 	# two-region budget afterward so it cannot be overwritten by that callback.
 	if section.is_inside_tree():
 		await editor_tree.process_frame
-	if not is_instance_valid(section):
+	base = base_ref.get_ref() as Control if base_ref != null else null
+	resize_target = resize_target_ref.get_ref() as Node if resize_target_ref != null else null
+	if (
+		not is_instance_valid(section) or not is_instance_valid(base)
+		or (resize_target_ref != null and not is_instance_valid(resize_target))
+	):
 		return
 	_limit_combined_script_preview_height(section)
-	_presenter.refresh_tooltip_layout(base, resize_target)
+	# Leave the native Code Editor window untouched until its final layout pass.
+	if str(metadata.get("bt_code_editor_host", "")) != "native":
+		_presenter.refresh_tooltip_layout(base, resize_target)
 	if section.is_inside_tree():
 		await editor_tree.process_frame
+	# The native popup may have been dismissed while the user switched to
+	# another application. Re-acquire every deferred target before passing it
+	# to typed functions; a freed Node otherwise causes a Godot engine error.
+	section = section_ref.get_ref() as Control if section_ref != null else null
+	base = base_ref.get_ref() as Control if base_ref != null else null
+	if not is_instance_valid(section) or not is_instance_valid(base):
+		return
+	resize_target = (
+		resize_target_ref.get_ref() as Node
+		if resize_target_ref != null else null
+	)
+	if resize_target_ref != null and not is_instance_valid(resize_target):
+		return
 	_promote_live_text_tooltip(
 		module_id,
 		path,

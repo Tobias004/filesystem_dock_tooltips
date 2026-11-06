@@ -1,0 +1,43 @@
+[b]Code editor & script navigation docs[/b]
+
+Enable this module to extend Godot's Code Editor symbol help with your project documentation.
+
+[b]Supported places[/b]
+
+- native Code Editor tooltips
+- the standard script list / navigation controls
+- compatible integrations such as Quill IDE and Script-IDE when their own checkboxes are enabled
+
+[b]What is shown[/b]
+
+For supported project classes and members, Better Tooltips can show:
+- the symbol title/signature
+- [code]##[/code] documentation
+- optional single-[code]#[/code] documentation blocks
+- inherited/native Godot help below your local project help when appropriate
+
+[b]Example[/b]
+
+[codeblock lang=gdscript]
+class_name Enemy
+extends Node
+
+## Current hit points.
+var health := 100
+
+## Deals contact damage.
+func damage(target: Node) -> void:
+    pass
+[/codeblock]
+
+Hovering [code]enemy.health[/code] or [code]enemy.damage()[/code] can show the same project documentation at the use site.
+
+[b]How it looks[/b]
+
+[codeblock lang=text]
+damage(target: Node) -> void
+
+Deals contact damage.
+
+Inherited/native Godot help may appear below when it is distinct.
+[/codeblock]

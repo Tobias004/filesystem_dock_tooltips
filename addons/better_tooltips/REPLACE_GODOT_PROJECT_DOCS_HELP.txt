@@ -1,0 +1,22 @@
+[b]Replace Godot-rendered project docs[/b]
+
+When Godot already shows the same project [code]##[/code] documentation natively, this option hides only that duplicate project description and renders it with Better Tooltips instead.
+
+[b]Why this exists[/b]
+
+The add-on renderer preserves:
+- line breaks more reliably
+- consistent formatting across FileSystem, Code Editor and navigation tooltips
+- less clipping for longer project documentation
+
+Godot's own engine/API documentation is [b]not[/b] replaced. Distinct inherited or native help is still shown below your project documentation.
+
+[b]How it looks[/b]
+
+[codeblock lang=text]
+Your project method signature
+
+Your project documentation rendered by Better Tooltips.
+
+Native/inherited Godot help (only when different)
+[/codeblock]

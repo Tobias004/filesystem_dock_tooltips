@@ -54,7 +54,7 @@ static func read_preview_text(path: String) -> Dictionary:
 		"read_bytes": read_bytes,
 	}
 
-static func create_plain_preview(path: String, _metadata: Dictionary) -> Control:
+static func create_plain_preview(path: String, metadata: Dictionary) -> Control:
 	var data := read_preview_text(path)
 	if data.is_empty():
 		return null
@@ -74,6 +74,27 @@ static func create_plain_preview(path: String, _metadata: Dictionary) -> Control
 	text_label.text = str(data.get("text", ""))
 	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_configure_plain_text_label(text_label)
+	# The native Code Editor tooltip is an already-visible Godot Window. An
+	# initially unbounded fit_content label can expand it to 16384 pixels
+	# before the deferred layout limiter runs, causing CodeEdit.mouse_exited
+	# and Godot's 250 ms tooltip-close timer to fire. Bound the initial layout
+	# only for this host; the common finalizer still measures the real text.
+	if str(metadata.get("bt_code_editor_host", "")) == "native":
+		var scale := EditorInterface.get_editor_scale()
+		var maximum_height := minf(
+			360.0 * scale,
+			TooltipAppearance.get_text_max_height_pixels() * 0.60
+		)
+		var line_count := (str(data.get("text", "")).count("\n") + 1)
+		var initial_height := clampf(
+			float(line_count) * 19.0 * scale + 12.0 * scale,
+			48.0 * scale,
+			maximum_height
+		)
+		text_label.fit_content = false
+		text_label.scroll_active = true
+		text_label.custom_minimum_size.y = initial_height
+		text_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	content.add_child(text_label)
 	_append_truncation_hint(content, bool(data.get("truncated", false)))
 	return outer

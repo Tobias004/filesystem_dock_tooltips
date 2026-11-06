@@ -23,25 +23,23 @@ version when it is opened from the editor.
 
 ## Debug information
 
-The release configuration keeps debug messages disabled.
+Open **Project > Tools > Better Tooltips > Settings...** and enable **Show Better Tooltips diagnostics**. The option is stored per project and can be switched off again after collecting Godot **Output** messages for a bug report. No source-code edits or editor restart are required.
 
-If a problem needs additional diagnostics, temporarily change:
+This controls only the add-on's own diagnostic logger (`BTDebug`). Godot parser errors, engine errors and invalid object-access errors cannot be hidden by this setting; they need to be fixed.
 
-```gdscript
-const DEBUG_MESSAGES := false
-```
+### Code Editor popup trace (diagnostic builds)
 
-to:
+With **Show Better Tooltips diagnostics** enabled, a script-symbol hover logs
+`[Code Editor] native created/populated/hidden/freed` for Godot-owned tooltip
+windows, or `fallback created/closed` for an add-on-owned tooltip. Each event
+includes a `popup` instance ID and the owning `editor` ID. Fallback closure
+messages also identify the reason (for example `native_handoff`, `mouse_exit`,
+`hover_changed`, or `lifetime_expired`).
 
-```gdscript
-const DEBUG_MESSAGES := true
-```
-
-in:
-
-`addons/better_tooltips/tooltip_settings.gd`
-
-Reload the add-on or restart the editor, reproduce the issue, and include the
-relevant Godot **Output** messages in the bug report.
-
-Set the constant back to `false` afterwards.
+A corresponding `[Script Documentation] live preview` message includes
+`host=native` or `host=fallback`, plus matching `popup`, `base`, and `section`
+instance IDs. Compare these IDs to distinguish an additional preview in the
+same popup from a newly created popup. The same symbol can be hovered repeatedly;
+only consecutive events with the pointer left stationary indicate unexpected
+re-creation. This instrumentation reports behavior; it does not change popup
+lifetime or suppress Godot errors.

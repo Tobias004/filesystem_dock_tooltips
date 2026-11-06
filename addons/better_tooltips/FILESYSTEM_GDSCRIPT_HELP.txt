@@ -1,0 +1,37 @@
+[b]FileSystem GDScript documentation[/b]
+
+Enable this to show documentation when hovering a [code].gd[/code] file in the FileSystem dock.
+
+[b]What is shown[/b]
+
+- [code]class_name[/code] when present
+- the top-level [code]##[/code] script description
+- for documented scripts, the shared rich documentation renderer
+- for plain [code].gd[/code] files without class documentation, the source preview can still be shown by the existing text/code tooltip pipeline
+- normal script documentation for scenes in the native Scene dock and in Scene Dependency Explorer (when that addon is installed). The latter uses saved scene data; it does not read unsaved Inspector values.
+
+[b]Basic syntax[/b]
+
+Use Godot documentation comments with [code]##[/code].
+
+[codeblock lang=gdscript]
+class_name EnemyStats
+extends Resource
+
+## Stores the editable combat values for one enemy type.
+## Use [member EnemyStats.health] and [member EnemyStats.damage].
+@export var health := 100
+@export var damage := 8
+[/codeblock]
+
+[b]How it looks[/b]
+
+[codeblock lang=text]
+EnemyStats.gd
+class_name EnemyStats
+
+Stores the editable combat values for one enemy type.
+Use health and damage.
+[/codeblock]
+
+For the full syntax reference, open the [code]##[/code] help button as well.

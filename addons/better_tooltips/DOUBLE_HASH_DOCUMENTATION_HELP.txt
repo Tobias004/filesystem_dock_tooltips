@@ -1,0 +1,34 @@
+[b]Show ## documentation comments[/b]
+
+This option enables standard Godot [code]##[/code] documentation comments in supported code and navigation tooltips.
+
+[b]Syntax[/b]
+
+Place [code]##[/code] immediately above the class/member, or use supported inline documentation for some declarations.
+
+[codeblock lang=gdscript]
+## Controls the player movement.
+class_name PlayerController
+extends Node
+
+## Walk speed in pixels per second.
+@export var speed := 140.0
+
+signal jumped ## Emitted after a jump starts.
+
+## Makes the player jump.
+func jump() -> void:
+    pass
+[/codeblock]
+
+You can also use Godot's documentation markup such as [code][lb]b[rb][/code], [code][lb]code[rb][/code], [code][lb]br[rb][/code], links and references like [code][lb]method Node.add_child[rb][/code].
+
+[b]How it looks[/b]
+
+[codeblock lang=text]
+jump() -> void
+
+Makes the player jump.
+[/codeblock]
+
+This is the main syntax Better Tooltips is designed around.

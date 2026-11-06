@@ -36,21 +36,55 @@ layout_mode = 2
 theme_type_variation = &"HeaderMedium"
 text = "Documentation"
 
-[node name="chkbGdscriptDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1381690256]
+[node name="ComponentDocumentationRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
 layout_mode = 2
+
+[node name="chkbComponentDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/ComponentDocumentationRow" unique_id=580500447]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Component documentation (opt-in)"
+
+[node name="btnComponentDocHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/ComponentDocumentationRow"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+flat = true
+text = "?"
+
+[node name="GdscriptDocumentationRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+
+[node name="chkbGdscriptDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/GdscriptDocumentationRow" unique_id=1381690256]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Adds class_name and Godot ## documentation to GDScript files in
 the FileSystem dock."
 button_pressed = true
-text = "FileSystem GDScript documentation"
+text = "GDScript & Scene-Dock docs"
 
-[node name="chkbCodeEditorDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn" unique_id=194112211]
+[node name="btnGdscriptDocHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/GdscriptDocumentationRow"]
+custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
+flat = true
+text = "?"
+
+[node name="CodeEditorDocumentationRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+layout_mode = 2
+
+[node name="chkbCodeEditorDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorDocumentationRow" unique_id=194112211]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Extends Godot Code Editor symbol help and ScriptEditor
 navigation controls with project GDScript documentation. This
 includes the stock script list plus compatible tabs/outlines
 from Quill IDE and Script-IDE."
 button_pressed = true
 text = "Code editor & script navigation docs"
+
+[node name="btnCodeEditorDocHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorDocumentationRow"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+flat = true
+text = "?"
 
 [node name="CodeEditorOptionsIndent" type="MarginContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1159159554]
 layout_mode = 2
@@ -60,8 +94,12 @@ theme_override_constants/margin_left = 24
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="chkbDocumentationComments" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=152727525]
+[node name="DocumentationCommentsRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions"]
 layout_mode = 2
+
+[node name="chkbDocumentationComments" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/DocumentationCommentsRow" unique_id=152727525]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Shows Godot-style ## documentation comments with the add-on
 renderer for supported project classes and members in code and
 ScriptEditor navigation tooltips. This preserves source line
@@ -70,8 +108,18 @@ native project documentation tooltip."
 button_pressed = true
 text = "Show ## documentation comments"
 
-[node name="chkbSingleHashDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=540211061]
+[node name="btnDocumentationCommentsHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/DocumentationCommentsRow"]
+custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
+flat = true
+text = "?"
+
+[node name="SingleHashDocRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions"]
+layout_mode = 2
+
+[node name="chkbSingleHashDoc" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/SingleHashDocRow" unique_id=540211061]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Treats an ordinary contiguous # comment block directly above a
 supported project class/member as tooltip documentation in code
 and ScriptEditor navigation tooltips. This is an add-on
@@ -80,8 +128,18 @@ become Godot API documentation."
 button_pressed = true
 text = "Show single # comment blocks"
 
-[node name="chkbReplaceGodotMemberDocs" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=1965630620]
+[node name="btnSingleHashDocHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/SingleHashDocRow"]
+custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
+flat = true
+text = "?"
+
+[node name="ReplaceGodotMemberDocsRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions"]
+layout_mode = 2
+
+[node name="chkbReplaceGodotMemberDocs" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ReplaceGodotMemberDocsRow" unique_id=1965630620]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "When Godot's native tooltip is showing the same project ##
 documentation, hide that duplicate description and render it
 with the add-on instead. Godot's own engine/API documentation
@@ -89,8 +147,18 @@ and distinct inherited help remain untouched."
 button_pressed = true
 text = "Replace Godot-rendered project docs"
 
-[node name="chkbQuillIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=57867918]
+[node name="btnReplaceGodotMemberDocsHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ReplaceGodotMemberDocsRow"]
+custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
+flat = true
+text = "?"
+
+[node name="QuillIntegrationRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions"]
+layout_mode = 2
+
+[node name="chkbQuillIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/QuillIntegrationRow" unique_id=57867918]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Searches for Quill IDE script tabs and outline controls and adds
 the same project documentation tooltips there. Disable this
 compatibility integration if a future Quill version changes its
@@ -99,8 +167,18 @@ script-list tooltips remain enabled."
 button_pressed = true
 text = "Enable Quill IDE integration"
 
-[node name="chkbScriptIdeIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions" unique_id=940639737]
+[node name="btnQuillIntegrationHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/QuillIntegrationRow"]
+custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
+flat = true
+text = "?"
+
+[node name="ScriptIdeIntegrationRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions"]
+layout_mode = 2
+
+[node name="chkbScriptIdeIntegration" type="CheckBox" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ScriptIdeIntegrationRow" unique_id=940639737]
+layout_mode = 2
+size_flags_horizontal = 3
 tooltip_text = "Searches for Script-IDE script tabs and outline controls and
 adds the same project documentation tooltips there. Disable this
 compatibility integration if a future Script-IDE version changes
@@ -108,6 +186,12 @@ its editor controls or causes problems; standard Godot code and
 script-list tooltips remain enabled."
 button_pressed = true
 text = "Enable Script-IDE integration"
+
+[node name="btnScriptIdeIntegrationHelp" type="Button" parent="MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ScriptIdeIntegrationRow"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+flat = true
+text = "?"
 
 [node name="HSeparatorAppearance" type="HSeparator" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1117074218]
 layout_mode = 2
@@ -137,19 +221,19 @@ max_value = 30.0
 value = 5.0
 suffix = " %"
 
-[node name="lblTextSizing" type="Label" parent="MarginContainer/Columns/DocumentationColumn"]
+[node name="lblTextSizing" type="Label" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1942171730]
 layout_mode = 2
 text = "Text & code tooltips"
 
-[node name="TextFontRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+[node name="TextFontRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=347570907]
 layout_mode = 2
 
-[node name="lblTextFont" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow"]
+[node name="lblTextFont" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow" unique_id=901780512]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Font scale"
 
-[node name="spnTextFont" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow"]
+[node name="spnTextFont" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextFontRow" unique_id=1364791334]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 min_value = 50.0
@@ -158,15 +242,15 @@ step = 5.0
 value = 100.0
 suffix = " %"
 
-[node name="TextWidthRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+[node name="TextWidthRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=947409496]
 layout_mode = 2
 
-[node name="lblTextWidth" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow"]
+[node name="lblTextWidth" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow" unique_id=1990961633]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Max width"
 
-[node name="spnTextWidth" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow"]
+[node name="spnTextWidth" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextWidthRow" unique_id=864963337]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 min_value = 240.0
@@ -175,15 +259,15 @@ step = 20.0
 value = 760.0
 suffix = " px"
 
-[node name="TextHeightRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn"]
+[node name="TextHeightRow" type="HBoxContainer" parent="MarginContainer/Columns/DocumentationColumn" unique_id=1262976339]
 layout_mode = 2
 
-[node name="lblTextHeight" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow"]
+[node name="lblTextHeight" type="Label" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow" unique_id=52283242]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Max height"
 
-[node name="spnTextHeight" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow"]
+[node name="spnTextHeight" type="SpinBox" parent="MarginContainer/Columns/DocumentationColumn/TextHeightRow" unique_id=307358722]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 min_value = 160.0
@@ -367,3 +451,11 @@ layout_mode = 2
 tooltip_text = "Renders Sky resources in a fixed wide-angle reference view."
 button_pressed = true
 text = "Skies"
+
+[node name="HSeparatorDiagnostics" type="HSeparator" parent="MarginContainer/Columns/PreviewColumn"]
+layout_mode = 2
+
+[node name="chkbPluginDiagnostics" type="CheckBox" parent="MarginContainer/Columns/PreviewColumn"]
+layout_mode = 2
+text = "Show Better Tooltips diagnostics"
+tooltip_text = "Shows add-on diagnostic messages, warnings and errors in Godot's Output/Debugger. Off by default. Errors generated directly by Godot cannot be hidden by this setting."

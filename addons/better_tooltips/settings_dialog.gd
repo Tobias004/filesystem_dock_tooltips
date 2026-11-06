@@ -9,24 +9,60 @@ extends AcceptDialog
 signal module_setting_changed(module_id: String, enabled: bool)
 signal cache_clear_requested()
 signal code_editor_integration_settings_changed()
+signal documentation_help_requested(help_path: String, help_title: String)
 
 const Settings := preload("res://addons/better_tooltips/tooltip_settings.gd")
 const TOOLTIP_WRAP_COLUMNS := 64
 
+const HELP_DOCUMENTATION_SYNTAX_PATH := "res://addons/better_tooltips/DOCUMENTATION_SYNTAX.txt"
+const HELP_COMPONENT_DOCUMENTATION_PATH := "res://addons/better_tooltips/COMPONENT_DOCUMENTATION_HELP.txt"
+const HELP_FILESYSTEM_GDSCRIPT_PATH := "res://addons/better_tooltips/FILESYSTEM_GDSCRIPT_HELP.txt"
+const HELP_CODE_EDITOR_DOCUMENTATION_PATH := "res://addons/better_tooltips/CODE_EDITOR_DOCUMENTATION_HELP.txt"
+const HELP_DOUBLE_HASH_PATH := "res://addons/better_tooltips/DOUBLE_HASH_DOCUMENTATION_HELP.txt"
+const HELP_SINGLE_HASH_PATH := "res://addons/better_tooltips/SINGLE_HASH_DOCUMENTATION_HELP.txt"
+const HELP_REPLACE_GODOT_DOCS_PATH := "res://addons/better_tooltips/REPLACE_GODOT_PROJECT_DOCS_HELP.txt"
+const HELP_QUILL_PATH := "res://addons/better_tooltips/QUILL_IDE_INTEGRATION_HELP.txt"
+const HELP_SCRIPT_IDE_PATH := "res://addons/better_tooltips/SCRIPT_IDE_INTEGRATION_HELP.txt"
+
+@onready var _component_doc_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/ComponentDocumentationRow/btnComponentDocHelp
+)
+@onready var _gdscript_doc_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/GdscriptDocumentationRow/btnGdscriptDocHelp
+)
+@onready var _code_editor_doc_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorDocumentationRow/btnCodeEditorDocHelp
+)
+@onready var _documentation_comments_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/DocumentationCommentsRow/btnDocumentationCommentsHelp
+)
+@onready var _single_hash_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/SingleHashDocRow/btnSingleHashDocHelp
+)
+@onready var _replace_godot_member_docs_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ReplaceGodotMemberDocsRow/btnReplaceGodotMemberDocsHelp
+)
+@onready var _quill_integration_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/QuillIntegrationRow/btnQuillIntegrationHelp
+)
+@onready var _script_ide_integration_help_button: Button = (
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ScriptIdeIntegrationRow/btnScriptIdeIntegrationHelp
+)
+
 @onready var _documentation_comments_checkbox: CheckBox = (
-	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/chkbDocumentationComments
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/DocumentationCommentsRow/chkbDocumentationComments
 )
 @onready var _single_hash_checkbox: CheckBox = (
-	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/chkbSingleHashDoc
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/SingleHashDocRow/chkbSingleHashDoc
 )
 @onready var _replace_godot_member_docs_checkbox: CheckBox = (
-	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/chkbReplaceGodotMemberDocs
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ReplaceGodotMemberDocsRow/chkbReplaceGodotMemberDocs
 )
 @onready var _quill_integration_checkbox: CheckBox = (
-	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/chkbQuillIntegration
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/QuillIntegrationRow/chkbQuillIntegration
 )
 @onready var _script_ide_integration_checkbox: CheckBox = (
-	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/chkbScriptIdeIntegration
+	$MarginContainer/Columns/DocumentationColumn/CodeEditorOptionsIndent/CodeEditorOptions/ScriptIdeIntegrationRow/chkbScriptIdeIntegration
 )
 @onready var _background_contrast_spin: SpinBox = (
 	$MarginContainer/Columns/DocumentationColumn/BackgroundContrastRow/spnBackgroundContrast
@@ -37,6 +73,9 @@ const TOOLTIP_WRAP_COLUMNS := 64
 @onready var _clear_cache_button: Button = (
 	$MarginContainer/Columns/DocumentationColumn/btnClearCaches
 )
+@onready var _plugin_diagnostics_checkbox: CheckBox = (
+	$MarginContainer/Columns/PreviewColumn/chkbPluginDiagnostics
+)
 @onready var _preview_size_spin: SpinBox = (
 	$MarginContainer/Columns/PreviewColumn/PreviewSizeRow/spnPreviewSize
 )
@@ -46,13 +85,15 @@ const TOOLTIP_WRAP_COLUMNS := 64
 @onready var _text_height_spin: SpinBox = $MarginContainer/Columns/DocumentationColumn/TextHeightRow/spnTextHeight
 
 var _checkboxes: Dictionary = {}
+var _documentation_help_buttons: Dictionary = {}
 
 # Connects all settings controls once the dialog enters the editor tree and adds
 # the shared actions that affect every module or the tooltip caches.
 func _ready() -> void:
 	_checkboxes = {
-		Settings.MODULE_SCRIPT_DOCUMENTATION: $MarginContainer/Columns/DocumentationColumn/chkbGdscriptDoc,
-		Settings.MODULE_CODE_EDITOR_DOCUMENTATION: $MarginContainer/Columns/DocumentationColumn/chkbCodeEditorDoc,
+		Settings.MODULE_COMPONENT_DOCUMENTATION: $MarginContainer/Columns/DocumentationColumn/ComponentDocumentationRow/chkbComponentDoc,
+		Settings.MODULE_SCRIPT_DOCUMENTATION: $MarginContainer/Columns/DocumentationColumn/GdscriptDocumentationRow/chkbGdscriptDoc,
+		Settings.MODULE_CODE_EDITOR_DOCUMENTATION: $MarginContainer/Columns/DocumentationColumn/CodeEditorDocumentationRow/chkbCodeEditorDoc,
 		Settings.MODULE_MARKDOWN_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbMarkdown,
 		Settings.MODULE_TEXT_FILE_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbTextFiles,
 		Settings.MODULE_MATERIAL_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbMaterials,
@@ -66,6 +107,16 @@ func _ready() -> void:
 		Settings.MODULE_GRADIENT_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbGradients,
 		Settings.MODULE_ENVIRONMENT_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbEnvironments,
 		Settings.MODULE_SKY_PREVIEW: $MarginContainer/Columns/PreviewColumn/chkbSkies,
+	}
+	_documentation_help_buttons = {
+		_component_doc_help_button: [HELP_COMPONENT_DOCUMENTATION_PATH, "Better Tooltips — Component Documentation"],
+		_gdscript_doc_help_button: [HELP_FILESYSTEM_GDSCRIPT_PATH, "Better Tooltips — FileSystem GDScript Documentation"],
+		_code_editor_doc_help_button: [HELP_CODE_EDITOR_DOCUMENTATION_PATH, "Better Tooltips — Code Editor Documentation"],
+		_documentation_comments_help_button: [HELP_DOUBLE_HASH_PATH, "Better Tooltips — ## Documentation Comments"],
+		_single_hash_help_button: [HELP_SINGLE_HASH_PATH, "Better Tooltips — Single # Comment Blocks"],
+		_replace_godot_member_docs_help_button: [HELP_REPLACE_GODOT_DOCS_PATH, "Better Tooltips — Replace Duplicate Project Docs"],
+		_quill_integration_help_button: [HELP_QUILL_PATH, "Better Tooltips — Quill IDE Integration"],
+		_script_ide_integration_help_button: [HELP_SCRIPT_IDE_PATH, "Better Tooltips — Script-IDE Integration"],
 	}
 	for module_id in _checkboxes:
 		var checkbox := _checkboxes[module_id] as CheckBox
@@ -90,6 +141,11 @@ func _ready() -> void:
 	_text_width_spin.value_changed.connect(func(value: float) -> void: Settings.set_text_max_width(roundi(value)))
 	_text_height_spin.value_changed.connect(func(value: float) -> void: Settings.set_text_max_height(roundi(value)))
 	_clear_cache_button.pressed.connect(_on_clear_caches_pressed)
+	_plugin_diagnostics_checkbox.toggled.connect(Settings.set_plugin_diagnostics_enabled)
+	for button_variant in _documentation_help_buttons:
+		var button := button_variant as Button
+		var entry: Array = _documentation_help_buttons[button]
+		button.pressed.connect(_emit_documentation_help.bind(str(entry[0]), str(entry[1])))
 	ok_button_text = "Close"
 	var enable_all_button := add_button("Enable All", false, "enable_all")
 	var disable_all_button := add_button("Disable All", false, "disable_all")
@@ -101,6 +157,9 @@ func _ready() -> void:
 	_configure_setting_tooltips(enable_all_button, disable_all_button)
 	custom_action.connect(_on_custom_action)
 	refresh()
+
+func _emit_documentation_help(help_path: String, help_title: String) -> void:
+	documentation_help_requested.emit(help_path, help_title)
 	
 # Refreshes controls from project metadata without emitting change signals, so
 # simply opening the dialog never rewrites project-scoped editor settings.
@@ -131,6 +190,7 @@ func refresh() -> void:
 	)
 	_safety_limit_spin.set_value_no_signal(Settings.get_preview_safety_limit_ms())
 	_preview_size_spin.set_value_no_signal(Settings.get_preview_size_percent())
+	_plugin_diagnostics_checkbox.set_pressed_no_signal(Settings.is_plugin_diagnostics_enabled())
 	_text_font_spin.set_value_no_signal(Settings.get_text_font_percent())
 	_text_width_spin.set_value_no_signal(Settings.get_text_max_width())
 	_text_height_spin.set_value_no_signal(Settings.get_text_max_height())
@@ -266,7 +326,8 @@ func _configure_setting_tooltips(
 	disable_all_button: Button
 ) -> void:
 	var module_tooltips := {
-		Settings.MODULE_SCRIPT_DOCUMENTATION: "Adds class_name and Godot ## documentation to GDScript files in the FileSystem dock.",
+		Settings.MODULE_COMPONENT_DOCUMENTATION: "Optional, off by default. Shows documentation for scenes/scripts that declare COMPONENT_CONTRACT v1. Includes exported properties, saved scene assignments and live assignments in the Scene dock. Click ? for setup instructions and an example.",
+		Settings.MODULE_SCRIPT_DOCUMENTATION: "Adds class_name and Godot ## documentation to GDScript file tooltips and to nodes with an attached script in the Scene dock, including Implementation notes.",
 		Settings.MODULE_CODE_EDITOR_DOCUMENTATION: "Extends Godot Code Editor symbol help and ScriptEditor navigation controls with project GDScript documentation. This includes the stock script list plus compatible tabs/outlines from Quill IDE and Script-IDE.",
 		Settings.MODULE_MARKDOWN_PREVIEW: "Shows a live Markdown preview with editor-sized text. Long documents scroll inside the tooltip; graphical zoom is not used.",
 		Settings.MODULE_TEXT_FILE_PREVIEW: "Shows a live editor-font preview for Godot TextFile entries other than Markdown. Long files scroll inside the tooltip.",
@@ -287,6 +348,30 @@ func _configure_setting_tooltips(
 		checkbox.tooltip_text = _wrap_tooltip(
 			str(module_tooltips.get(module_id, ""))
 		)
+	_component_doc_help_button.tooltip_text = _wrap_tooltip(
+		"How to document a reusable scene with COMPONENT_CONTRACT. Opens a local help page with setup instructions, syntax and an example result."
+	)
+	_gdscript_doc_help_button.tooltip_text = _wrap_tooltip(
+		"Explains FileSystem GDScript documentation and shows an example tooltip."
+	)
+	_code_editor_doc_help_button.tooltip_text = _wrap_tooltip(
+		"Explains code-editor and navigation tooltips, including where project documentation appears."
+	)
+	_documentation_comments_help_button.tooltip_text = _wrap_tooltip(
+		"Shows the supported ## documentation syntax and a rendered example."
+	)
+	_single_hash_help_button.tooltip_text = _wrap_tooltip(
+		"Explains the optional single-# extension and shows how it appears in a tooltip."
+	)
+	_replace_godot_member_docs_help_button.tooltip_text = _wrap_tooltip(
+		"Explains when duplicate native project docs are replaced and what remains native."
+	)
+	_quill_integration_help_button.tooltip_text = _wrap_tooltip(
+		"Explains what the optional Quill IDE integration adds and when to disable it."
+	)
+	_script_ide_integration_help_button.tooltip_text = _wrap_tooltip(
+		"Explains what the optional Script-IDE integration adds and when to disable it."
+	)
 	_documentation_comments_checkbox.tooltip_text = _wrap_tooltip(
 		"Shows Godot-style ## documentation comments with the add-on renderer for supported project classes and members in code and ScriptEditor navigation tooltips. This preserves source line breaks and avoids the clipping behavior of Godot's compact native project documentation tooltip."
 	)

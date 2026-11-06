@@ -10,7 +10,7 @@ extends AcceptDialog
 const DocumentationRenderer := preload(
 	"res://addons/better_tooltips/core/documentation_renderer.gd"
 )
-const HELP_PATH := (
+const DEFAULT_HELP_PATH := (
 	"res://addons/better_tooltips/DOCUMENTATION_SYNTAX.txt"
 )
 
@@ -18,11 +18,18 @@ const HELP_PATH := (
 
 var _renderer: BTDocumentationRenderer = null
 var _help_source := ""
+var _help_path := DEFAULT_HELP_PATH
 
 # Loads the bundled reference once the dialog controls are ready. Rendering is
 # triggered by the controller after the current editor theme has been applied.
 func _ready() -> void:
 	get_ok_button().text = "Close"
+	_load_help_source()
+
+# Switches between syntax help and the opt-in component-contract guide.
+func set_help_topic(help_path: String, help_title: String) -> void:
+	_help_path = help_path
+	title = help_title
 	_load_help_source()
 
 # Re-applies the current editor theme and re-renders the local help source.
@@ -42,11 +49,11 @@ func refresh() -> void:
 # Godot documentation markup rather than Markdown, allowing it to exercise the
 # same renderer that users see in documentation tooltips.
 func _load_help_source() -> void:
-	var file := FileAccess.open(HELP_PATH, FileAccess.READ)
+	var file := FileAccess.open(_help_path, FileAccess.READ)
 	if file == null:
 		_help_source = (
 			"[b]Documentation syntax help could not be loaded.[/b][br]"
-			+ "Expected: [code]%s[/code]" % HELP_PATH
+			+ "Expected: [code]%s[/code]" % _help_path
 		)
 		return
 	_help_source = file.get_as_text()

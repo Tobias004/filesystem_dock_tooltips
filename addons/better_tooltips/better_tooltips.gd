@@ -27,6 +27,11 @@ const TooltipPipeline := preload(
 # EditorPlugin lifecycle and provides one place for cache/pipeline coordination.
 const MODULES := [
 	{
+		"id": Settings.MODULE_COMPONENT_DOCUMENTATION,
+		"script_path": "res://addons/better_tooltips/modules/component_documentation_tooltip.gd",
+		"name": "Component Documentation",
+	},
+	{
 		"id": Settings.MODULE_SCRIPT_DOCUMENTATION,
 		"script_path": "res://addons/better_tooltips/modules/script_documentation_tooltip.gd",
 		"name": "Script Documentation",
@@ -103,6 +108,11 @@ const MODULES := [
 	},
 ]
 
+const SceneComponentTooltip := preload("res://addons/better_tooltips/modules/scene_component_tooltip.gd")
+const SceneDependencyExplorerTooltip := preload("res://addons/better_tooltips/modules/scene_dependency_explorer_tooltip.gd")
+
+var _scene_component_tooltip: BTSceneComponentTooltip
+var _dependency_explorer_tooltip: BTSceneDependencyExplorerTooltip
 var _plugin: EditorPlugin = null
 var _tooltip_plugins: Dictionary = {}
 var _tooltip_cache: BTTooltipCache = null
@@ -206,6 +216,8 @@ func _register_module(module: Dictionary) -> void:
 		module_plugin
 	)
 	_tooltip_plugins[module_id] = module_plugin
+	if module_id in [Settings.MODULE_COMPONENT_DOCUMENTATION, Settings.MODULE_SCRIPT_DOCUMENTATION]:
+		_sync_scene_documentation()
 	Debug.log(module_name, "registered")
 
 # Unregisters one active module. CodeEdit integrations disconnect their editor
@@ -228,8 +240,37 @@ func _unregister_module(module: Dictionary) -> void:
 	if module_plugin != null and module_plugin.has_method("cleanup"):
 		module_plugin.call("cleanup")
 	_tooltip_plugins.erase(module_id)
+	if module_id in [Settings.MODULE_COMPONENT_DOCUMENTATION, Settings.MODULE_SCRIPT_DOCUMENTATION]:
+		_sync_scene_documentation()
 	var module_name: String = module["name"]
 	Debug.log(module_name, "unregistered")
+
+# The Scene dock is shared by the default script-documentation module and
+# the opt-in component module. Enable the integration when either is registered;
+# the content policy is independent of the Godot-version NodePath Strategy.
+func _sync_scene_documentation() -> void:
+	var contracts := _tooltip_plugins.has(Settings.MODULE_COMPONENT_DOCUMENTATION)
+	var scripts := _tooltip_plugins.has(Settings.MODULE_SCRIPT_DOCUMENTATION)
+	if not contracts and not scripts:
+		if _scene_component_tooltip != null:
+			_scene_component_tooltip.cleanup()
+			_scene_component_tooltip = null
+		if _dependency_explorer_tooltip != null:
+			_dependency_explorer_tooltip.cleanup()
+			_dependency_explorer_tooltip = null
+		return
+	if _scene_component_tooltip == null:
+		_scene_component_tooltip = SceneComponentTooltip.new()
+		_scene_component_tooltip.set_documentation_modes(contracts, scripts)
+		_scene_component_tooltip.setup()
+	else:
+		_scene_component_tooltip.set_documentation_modes(contracts, scripts)
+	if _dependency_explorer_tooltip == null:
+		_dependency_explorer_tooltip = SceneDependencyExplorerTooltip.new()
+		_dependency_explorer_tooltip.set_documentation_modes(contracts, scripts)
+		_dependency_explorer_tooltip.setup()
+	else:
+		_dependency_explorer_tooltip.set_documentation_modes(contracts, scripts)
 
 # Lazily creates the settings dialog, keeps it connected to live module changes
 # and the shared cache, and refreshes its state every time it is opened.
@@ -247,6 +288,9 @@ func _open_settings_dialog() -> void:
 			_on_code_editor_integration_settings_changed
 		)
 		_settings_dialog.cache_clear_requested.connect(_on_cache_clear_requested)
+		_settings_dialog.documentation_help_requested.connect(
+			_open_settings_documentation_help_dialog
+		)
 	_settings_dialog.refresh()
 	_settings_dialog.set_cache_available(
 		_tooltip_cache != null and _tooltip_cache.has_entries()
@@ -254,10 +298,20 @@ func _open_settings_dialog() -> void:
 	_settings_dialog.reset_size()
 	_settings_dialog.popup_centered()
 
-# Lazily creates the local documentation-syntax reference. Its body uses the
-# same reusable documentation renderer as tooltip content, including EditorHelp
-# fonts, colors, spacing, code blocks and clickable class-reference links.
+# The support-menu entry and the settings help buttons reuse the same local
+# help dialog, but can switch between several bundled documentation topics.
 func _open_documentation_help_dialog() -> void:
+	_show_documentation_help_dialog(
+		"res://addons/better_tooltips/DOCUMENTATION_SYNTAX.txt",
+		"Better Tooltips — Documentation Syntax"
+	)
+
+func _open_settings_documentation_help_dialog(help_path: String, help_title: String) -> void:
+	_show_documentation_help_dialog(help_path, help_title, true)
+
+# Lazily creates the local help dialog. All topics share the native-looking
+# documentation renderer and can be opened independently of module state.
+func _show_documentation_help_dialog(help_path: String, help_title: String, from_settings: bool = false) -> void:
 	if (
 		_documentation_help_dialog == null
 		or not is_instance_valid(_documentation_help_dialog)
@@ -269,6 +323,14 @@ func _open_documentation_help_dialog() -> void:
 		_documentation_help_dialog.hide()
 		_documentation_help_dialog.theme = EditorInterface.get_editor_theme()
 		EditorInterface.get_base_control().add_child(_documentation_help_dialog)
+	# Settings is already an exclusive dialog; a second exclusive sibling
+	# would fail to open. Nest help under Settings when invoked by its ? button.
+	var help_parent: Node = EditorInterface.get_base_control()
+	if from_settings and is_instance_valid(_settings_dialog):
+		help_parent = _settings_dialog
+	if _documentation_help_dialog.get_parent() != help_parent:
+		_documentation_help_dialog.reparent(help_parent)
+	_documentation_help_dialog.set_help_topic(help_path, help_title)
 	_documentation_help_dialog.refresh()
 	_documentation_help_dialog.popup_centered()
 

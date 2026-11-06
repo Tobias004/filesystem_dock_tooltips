@@ -141,11 +141,16 @@ static func limit_rich_text_height(label: RichTextLabel) -> void:
 	# bounded without requiring every caller to own an extra deferred callback.
 	if label.is_inside_tree() and not label.has_meta("_bt_text_height_limit_pending"):
 		label.set_meta("_bt_text_height_limit_pending", true)
+		# The label may be freed before the next frame. Capturing the Control
+		# directly causes Godot to log a freed lambda capture before our validity
+		# check runs. Keep only a WeakRef in the deferred callback.
+		var label_reference := weakref(label)
 		var callback: Callable = func() -> void:
-			if not is_instance_valid(label):
+			var current_label := label_reference.get_ref() as RichTextLabel
+			if not is_instance_valid(current_label):
 				return
-			label.remove_meta("_bt_text_height_limit_pending")
-			_apply_rich_text_height_limit(label)
+			current_label.remove_meta("_bt_text_height_limit_pending")
+			_apply_rich_text_height_limit(current_label)
 		label.get_tree().process_frame.connect(callback, CONNECT_ONE_SHOT)
 
 static func _apply_rich_text_height_limit(label: RichTextLabel) -> void:

@@ -1,6 +1,46 @@
 # Changelog
 
-## 3.2.0 (2026-10-28)
+## 3.3.1
+
+### Fixes
+
+- Fixed Quill-IDE, Script-IDE and Godot Filter Methods navigation tooltips blocking source-list scrollbars and keyboard shortcuts. Hovering a scrollbar no longer keeps the tooltip open, scrollbar dragging works, and non-exclusive, no-focus popups do not intercept global shortcuts.
+- Removed temporary native Code Editor popup lifecycle/size diagnostics added during the hover regression investigation; the optional general diagnostics setting remains available.
+- Fixed native Code Editor `preload()` tooltips briefly closing and reopening during size correction. Live-text previews now start with a bounded height, skip intermediate native-popup resizes and receive one final size adjustment after layout; Godot's native tooltip is preferred over the fallback.
+- Prevented a deferred live-text tooltip callback from passing already-freed popup controls to the shared pipeline after the editor loses focus or a native tooltip closes.
+
+- Fixed an editor crash when hovering `preload()` references to Better Tooltips' own GDScript files (for example, `Cache` / `TooltipCache`). Component-documentation lookups now reuse loaded script resources instead of reloading a script while its code is running.
+- Fixed `Lambda capture at index 0 was freed` errors from delayed rich-text tooltip sizing by keeping only a weak reference to the label.
+
+### Settings
+
+- Added an opt-in **Show Better Tooltips diagnostics** setting. Plugin messages remain quiet by default; Godot engine and parser errors are not hidden.
+
+## 3.3.0 (unreleased development build; included in 3.3.1)
+
+### Scene-dock GDScript help
+
+- Extended the Scene-dock rich popup to nodes with an attached GDScript, including ordinary `##` descriptions without `COMPONENT_CONTRACT`, and unnamed scripts such as OSC's `main.gd`.
+- Fixed FileSystem script documentation for documented `.gd` files without `class_name`; file and scene tooltips now use the same script-level parser, with the filename as the display title when needed.
+- Reused the existing script-documentation module switch (on by default). Contract API details remain opt-in; disabling both modules restores native Scene-dock tooltips.
+- Verified OSC's documentation markup in its `dev` repository and added repository-derived regression scenes for the main composition root, an uncontracted cockpit frame and a contracted HUD.
+- Retained the Godot 4.7 / 4.8 NodePath resolver strategies; checked against Godot 4.7.2 and 4.8-beta2.
+
+### Scene-component documentation (opt-in)
+
+- Added an **optional, disabled-by-default** component-reference module for reusable `.tscn`, `.scn` and `.gd` files whose scripts declare a version 1 `COMPONENT_CONTRACT` with required/optional exported-property names.
+- Reads typed exported properties, `##` descriptions, signals and documented public methods automatically. Scene resource hovers show saved property assignments without instantiating the scene or calling its lifecycle methods. The contract is informational and does not enforce dependencies.
+- Added a **`?` help button** beside the documentation settings, with help and examples.
+- Added a component reference to the FileSystem dock and supported Code Editor resource hovers; the local **Scene dock uses the same structured rich-text presentation** in its own popup, retaining the native node text as a header and showing unsaved Inspector assignments. Child nodes can have their own contract.
+- Added an up-to-256-entry **RAM-only cache** for positive and negative component-documentation lookups, invalidated by saved scene/script timestamps, file sizes and detected dependencies. **Shift + hover** forces a reread; **Clear Tooltip Caches** now includes component entries.
+
+### Implementation notes
+
+- Separated native-compatible `[color=#888888][i]Implementation notes[/i][br] ... [/color]` class documentation into a muted, theme-aware block with a narrow left rule, without changing the underlying GDScript comments or primary description.
+- Supports both reusable scene components and ordinary classes **without** `COMPONENT_CONTRACT`, including non-contract scene roots when component previews are enabled. The standard script/code tooltips do not require the component module.
+- Unified FileSystem script documentation parsing with the shared parser; added representative OSC scene regression tests and verified Godot 4.7.2 / 4.8-beta2 compatibility.
+
+## 3.2.0
 
 Includes the improvements from the unreleased 3.1.0 development version.
 

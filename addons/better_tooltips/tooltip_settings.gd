@@ -6,8 +6,10 @@ extends RefCounted
 ## Module toggles, code-documentation options and the preview safety limit are stored in Godot editor metadata rather than modifying [code]project.godot[/code].
 ## ScriptEditor navigation integration remains configurable, including independent compatibility switches for Quill IDE and Script-IDE tabs/outlines.
 
-# Set this to true while developing the add-on. The release package uses false.
-const DEBUG_MESSAGES := false
+# Plugin diagnostics are disabled by default, but can be enabled per project
+# from the settings dialog. Engine-generated script errors are not controllable here.
+const SHOW_DIAGNOSTICS_KEY := "show_plugin_diagnostics"
+const DEFAULT_SHOW_DIAGNOSTICS := false
 # Enables Project > Tools menu for settings, local documentation help and support links.
 const ENABLE_SUPPORT_MENU := true
 const SETTINGS_SECTION := "better_tooltips"
@@ -39,6 +41,7 @@ const DEFAULT_REPLACE_GODOT_MEMBER_DOCUMENTATION := true
 const DEFAULT_TOOLTIP_BACKGROUND_CONTRAST_PERCENT := 5
 const DEFAULT_QUILL_IDE_INTEGRATION := true
 const DEFAULT_SCRIPT_IDE_INTEGRATION := true
+const MODULE_COMPONENT_DOCUMENTATION := "component_documentation"
 const MODULE_SCRIPT_DOCUMENTATION := "script_documentation"
 const MODULE_CODE_EDITOR_DOCUMENTATION := "code_editor_documentation"
 const MODULE_MARKDOWN_PREVIEW := "markdown_preview"
@@ -55,6 +58,7 @@ const MODULE_GRADIENT_PREVIEW := "gradient_preview"
 const MODULE_ENVIRONMENT_PREVIEW := "environment_preview"
 const MODULE_SKY_PREVIEW := "sky_preview"
 const MODULE_DEFAULTS := {
+	MODULE_COMPONENT_DOCUMENTATION: false,
 	MODULE_SCRIPT_DOCUMENTATION: true,
 	MODULE_CODE_EDITOR_DOCUMENTATION: true,
 	MODULE_MARKDOWN_PREVIEW: true,
@@ -92,6 +96,7 @@ static func reset_to_defaults() -> void:
 		REPLACE_GODOT_MEMBER_DOCUMENTATION_KEY: DEFAULT_REPLACE_GODOT_MEMBER_DOCUMENTATION,
 		TOOLTIP_BACKGROUND_CONTRAST_KEY: DEFAULT_TOOLTIP_BACKGROUND_CONTRAST_PERCENT,
 		QUILL_IDE_INTEGRATION_KEY: DEFAULT_QUILL_IDE_INTEGRATION,
+		SHOW_DIAGNOSTICS_KEY: DEFAULT_SHOW_DIAGNOSTICS,
 		SCRIPT_IDE_INTEGRATION_KEY: DEFAULT_SCRIPT_IDE_INTEGRATION,
 	}
 	for key: String in defaults:
@@ -346,4 +351,14 @@ static func set_tooltip_background_contrast_percent(percent: int) -> void:
 		SETTINGS_SECTION,
 		TOOLTIP_BACKGROUND_CONTRAST_KEY,
 		clampi(percent, 0, 30)
+	)
+
+# Controls only messages explicitly emitted by BTDebug. Godot engine/parser
+# errors are not intercepted or suppressed by this preference.
+static func is_plugin_diagnostics_enabled() -> bool:
+	return bool(_get_project_metadata(SHOW_DIAGNOSTICS_KEY, DEFAULT_SHOW_DIAGNOSTICS))
+
+static func set_plugin_diagnostics_enabled(enabled: bool) -> void:
+	EditorInterface.get_editor_settings().set_project_metadata(
+		SETTINGS_SECTION, SHOW_DIAGNOSTICS_KEY, enabled
 	)

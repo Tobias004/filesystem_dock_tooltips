@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/components/example_component.gd" id="1_component"]
+
+[node name="ComponentRoot" type="Node"]
+script = ExtResource("1_component")
+caption = "Saved scene value"
+editor_description = "Saved root description."
+
+[node name="Source" type="Node" parent="."]

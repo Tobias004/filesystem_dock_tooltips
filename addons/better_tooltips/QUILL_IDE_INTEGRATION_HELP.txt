@@ -1,0 +1,16 @@
+[b]Enable Quill IDE integration[/b]
+
+This optional compatibility bridge searches for Quill IDE script tabs and outline/navigation controls and adds the same project documentation tooltips there.
+
+[b]Use this when[/b]
+
+- you use the Quill IDE addon
+- you want the same symbol tooltips there as in the native Code Editor
+
+[b]If something breaks[/b]
+
+Quill can change its internal editor controls between releases. If hover behavior or navigation tooltips stop working after a Quill update, disable only this option first. The normal Godot Code Editor integration remains available.
+
+[b]How it looks[/b]
+
+The content is the same as the regular code-editor tooltip: title/signature, project [code]##[/code] docs, optional single-[code]#[/code] docs, and inherited/native help when applicable.

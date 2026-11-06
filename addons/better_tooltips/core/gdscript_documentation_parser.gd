@@ -8,6 +8,10 @@ extends RefCounted
 
 const DOCUMENTATION_MARKER := "##"
 const SINGLE_HASH_MARKER := "#"
+# Native Godot-compatible markup, also used by OSC scenes. Better Tooltips
+# changes only how this block is displayed, never the source syntax.
+const IMPLEMENTATION_NOTES_OPEN := "[color=#888888][i]Implementation notes[/i][br]"
+
 
 # Finds documentation for the script class or script-level member named by a
 # CodeEdit hover. Supported declarations mirror GDScript documentation members:
@@ -199,6 +203,39 @@ static func _find_script_class_documentation(
 	documentation["member_kind"] = "class"
 	documentation["declaration_line"] = class_line
 	return documentation
+
+# Returns a script-level ## description for both named and unnamed scripts.
+# Godot allows editor scripts attached directly to scene roots without a
+# class_name. Their header documentation still belongs in the Scene dock.
+static func find_script_documentation(source: String) -> Dictionary:
+	if source.begins_with("\uFEFF"):
+		source = source.trim_prefix("\uFEFF")
+	var lines: PackedStringArray = source.split("\n")
+	var class_data := _find_script_class(lines)
+	if not class_data.is_empty():
+		return find_member_documentation(source, str(class_data.name), -1, true, false)
+	var header_line := -1
+	for index: int in range(lines.size()):
+		var line: String = lines[index].strip_edges()
+		if _starts_with_keyword(line, "extends"):
+			header_line = index
+			break
+		if line.is_empty() or line.begins_with("@") or line.begins_with("##"):
+			continue
+		break
+	if header_line < 0:
+		return {}
+	var block := _find_class_documentation_after_header(lines, header_line)
+	var document: Dictionary = {}
+	if not block.is_empty():
+		document = parse_documentation(block)
+	else:
+		var preceding := _find_preceding_class_documentation(lines, header_line, true, false)
+		document = preceding.get("documentation", {}) as Dictionary
+	if not has_renderable_documentation(document):
+		return {}
+	document["member_kind"] = "class"
+	return document
 
 # Finds class_name plus its source line without loading the Script resource.
 static func _find_script_class(lines: PackedStringArray) -> Dictionary:
@@ -845,13 +882,85 @@ static func parse_documentation(
 		if in_codeblock and stripped == "[/codeblock]":
 			in_codeblock = false
 	documentation["description"] = _normalize_description(description_lines)
-	return documentation
+	return separate_implementation_notes(documentation)
+
+
+# Extract the exact native-compatible "Implementation notes" wrapper from the
+# normalized description. The marker is recognized only outside literal code
+# blocks and inline code. Broken/missing closing tags stay untouched, as do all
+# other [color] blocks. A nested [color] inside notes is handled correctly.
+static func separate_implementation_notes(documentation: Dictionary) -> Dictionary:
+	var result := documentation.duplicate(true)
+	var description := str(result.get("description", ""))
+	if description.is_empty():
+		return result
+	var start := -1
+	var cursor := 0
+	while cursor < description.length():
+		var codeblock := description.find("[codeblock", cursor)
+		var inline_code := description.find("[code]", cursor)
+		var next_note := description.find(IMPLEMENTATION_NOTES_OPEN, cursor)
+		if next_note < 0:
+			return result
+		if codeblock >= 0 and codeblock < next_note:
+			var end_block := description.find("[/codeblock]", codeblock)
+			if end_block < 0:
+				return result
+			cursor = end_block + "[/codeblock]".length()
+			continue
+		if inline_code >= 0 and inline_code < next_note:
+			var end_inline := description.find("[/code]", inline_code)
+			if end_inline < 0:
+				return result
+			cursor = end_inline + "[/code]".length()
+			continue
+		start = next_note
+		break
+	if start < 0:
+		return result
+	var content_start := start + IMPLEMENTATION_NOTES_OPEN.length()
+	var nesting := 1
+	var scan := content_start
+	var closing_start := -1
+	while scan < description.length():
+		var tag_start := description.find("[", scan)
+		if tag_start < 0:
+			break
+		var tag_end := description.find("]", tag_start)
+		if tag_end < 0:
+			break
+		var tag := description.substr(tag_start + 1, tag_end - tag_start - 1)
+		if tag == "code" or tag.begins_with("code ") or tag == "codeblock" or tag.begins_with("codeblock "):
+			var closing_literal := "[/codeblock]" if tag.begins_with("codeblock") else "[/code]"
+			var end_literal := description.find(closing_literal, tag_end + 1)
+			if end_literal < 0:
+				return result
+			scan = end_literal + closing_literal.length()
+			continue
+		if tag.begins_with("color="):
+			nesting += 1
+		elif tag == "/color":
+			nesting -= 1
+			if nesting == 0:
+				closing_start = tag_start
+				break
+		scan = tag_end + 1
+	if closing_start < 0:
+		return result
+	var implementation := description.substr(content_start, closing_start - content_start).strip_edges()
+	var end_index := closing_start + "[/color]".length()
+	var remaining := (description.left(start).strip_edges() + "
+" + description.substr(end_index).strip_edges()).strip_edges()
+	result["description"] = remaining
+	result["implementation_notes"] = implementation
+	return result
 
 # Reports whether a parsed block contains anything visible in a documentation
 # tooltip, including status/tutorial metadata without ordinary description text.
 static func has_renderable_documentation(documentation: Dictionary) -> bool:
 	return (
 		not str(documentation.get("description", "")).strip_edges().is_empty()
+		or not str(documentation.get("implementation_notes", "")).strip_edges().is_empty()
 		or bool(documentation.get("is_deprecated", false))
 		or bool(documentation.get("is_experimental", false))
 		or not (documentation.get("tutorials", []) as Array).is_empty()
@@ -1200,6 +1309,7 @@ static func _flush_paragraph(
 static func _empty_documentation() -> Dictionary:
 	return {
 		"description": "",
+		"implementation_notes": "",
 		"tutorials": [],
 		"is_deprecated": false,
 		"deprecated": "",

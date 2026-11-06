@@ -9,6 +9,8 @@ extends RefCounted
 
 
 const Settings := preload("res://addons/better_tooltips/tooltip_settings.gd")
+const ComponentReader := preload("res://addons/better_tooltips/core/component_documentation.gd")
+const COMPONENT_DOCUMENT_MAX_ENTRIES := 256
 
 const STATUS_FAILED := "FAILED"
 const STATUS_SAFETY_LIMIT := "SAFETY_LIMIT"
@@ -19,6 +21,11 @@ const CACHE_INDEX_PATH := CACHE_ROOT + "/cache_index.cfg"
 const CACHE_INDEX_SECTION := "cache"
 const RAM_CACHE_MAX_BYTES := 32 * 1024 * 1024
 
+# Positive and negative component documents share the cache's lifecycle, but
+# never enter the persistent PNG store. Entries are bounded and keyed by source
+# and dependency file stamps, not by editor theme or preview resolution.
+var _component_documents: Dictionary = {}
+var _component_document_lru: Array[String] = []
 var _preview_cache: Dictionary = {}
 var _failure_cache: Dictionary = {}
 var _path_keys: Dictionary = {}
@@ -37,6 +44,7 @@ func setup(_parent: Node) -> void:
 # Releases only transient RAM state when the add-on is disabled. Persistent PNG
 # previews intentionally remain on disk so they can be reused after a restart.
 func cleanup() -> void:
+	_clear_component_documents()
 	_clear_memory_cache()
 	_failure_cache.clear()
 	_path_keys.clear()
@@ -45,6 +53,7 @@ func cleanup() -> void:
 # Removes RAM entries, remembered failures and every persistent preview written
 # by this add-on. The following hover therefore regenerates the resource preview.
 func clear() -> void:
+	_clear_component_documents()
 	_clear_memory_cache()
 	_failure_cache.clear()
 	_path_keys.clear()
@@ -54,13 +63,72 @@ func clear() -> void:
 # Reports whether there is anything meaningful for Clear Tooltip Caches to
 # remove. The cache-format metadata section by itself does not count as content.
 func has_entries() -> bool:
-	if not _preview_cache.is_empty() or not _failure_cache.is_empty():
+	if not _component_documents.is_empty() or not _preview_cache.is_empty() or not _failure_cache.is_empty():
 		return true
 	for section in _index.get_sections():
 		if section != CACHE_INDEX_SECTION:
 			return true
 	return false
 
+
+# Component documentation is parsed once per version of the saved resources.
+# An empty document is a valid NEGATIVE cache hit; do not reopen ordinary scenes
+# on every hover. The returned copy cannot mutate our cached data.
+func get_component_document(path: String) -> Dictionary:
+	if path.is_empty() or not path.get_extension().to_lower() in ["tscn", "scn", "gd"]:
+		return {}
+	var previous: Dictionary = _component_documents.get(path, {})
+	if not previous.is_empty() and _component_stamps_current(previous.get("stamps", {})):
+		_touch_component_document(path)
+		return (previous.get("document", {}) as Dictionary).duplicate(true)
+	var stamps: Dictionary = {}
+	_collect_component_stamps(path, stamps)
+	var document: Dictionary = ComponentReader.for_path(path)
+	_component_documents[path] = {"stamps": stamps, "document": document.duplicate(true)}
+	_touch_component_document(path)
+	while _component_document_lru.size() > COMPONENT_DOCUMENT_MAX_ENTRIES:
+		_component_documents.erase(_component_document_lru.pop_front())
+	return document
+
+# Explicit invalidation is used for Shift-hover and for clearing the caches.
+func invalidate_component_document(path: String) -> void:
+	_component_documents.erase(path)
+	_component_document_lru.erase(path)
+
+func _clear_component_documents() -> void:
+	_component_documents.clear()
+	_component_document_lru.clear()
+
+func _touch_component_document(path: String) -> void:
+	_component_document_lru.erase(path)
+	_component_document_lru.append(path)
+
+func _component_file_stamp(path: String) -> Vector2i:
+	if not FileAccess.file_exists(path):
+		return Vector2i(-1, -1)
+	return Vector2i(int(FileAccess.get_modified_time(path)), int(FileAccess.get_size(path)))
+
+func _component_stamps_current(stamps: Dictionary) -> bool:
+	if stamps.is_empty():
+		return false
+	for path: String in stamps:
+		if _component_file_stamp(path) != stamps[path]:
+			return false
+	return true
+
+# Dependencies are enumerated only on a MISS, not on every hover. A changed
+# parent or dependency invalidates the entry; the next parse rebuilds the graph.
+# This includes base scenes and inherited/base scripts when Godot reports them.
+func _collect_component_stamps(path: String, stamps: Dictionary) -> void:
+	if path.is_empty() or stamps.has(path):
+		return
+	stamps[path] = _component_file_stamp(path)
+	if not FileAccess.file_exists(path):
+		return
+	for dependency_value in ResourceLoader.get_dependencies(path):
+		var dependency_path := _extract_dependency_path(str(dependency_value))
+		if dependency_path.begins_with("res://"):
+			_collect_component_stamps(dependency_path, stamps)
 
 # Returns the exact key for one module and the current resource/dependency state.
 # The pipeline also uses this key to deduplicate in-flight generation work.

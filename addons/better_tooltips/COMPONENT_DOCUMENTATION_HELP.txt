@@ -1,0 +1,155 @@
+[b]Component documentation (opt-in feature)[/b]
+
+[b]What is a component contract?[/b]
+
+Godot scenes can be used as reusable components. However, understanding how to use them often requires examining their scripts, exported properties, signals and internal structure.
+
+Better Tooltips introduces an optional documentation convention called [code]COMPONENT_CONTRACT[/code]. It allows a scene to describe its public interface: what it needs to work, what can be configured, and which signals and methods it provides.
+
+This is especially useful when:
+
+- Working in a team, where other developers need to understand how to use a component.
+- Returning to a project after several months and having to remember how its scenes were designed.
+- Building reusable UI elements, gameplay systems or other components with dependencies.
+- Maintaining larger projects where inspecting every scene and script becomes time-consuming.
+
+Instead of searching through the implementation, developers can simply hover over a documented scene or node to see its purpose, requirements and available interface.
+
+[b]How does it work?[/b]
+
+A component contract is a dictionary constant in a GDScript file. Better Tooltips recognizes it and combines its information with existing Godot [code]##[/code] documentation comments and script reflection.
+
+The contract declares which exported properties are required or optional. Better Tooltips automatically discovers their types, along with documented public methods and signals.
+
+[code]"version": 1[/code] identifies the format of the component contract understood by Better Tooltips. It is not the version of your scene, project or Godot.
+
+This is a documentation feature, not a dependency injection or validation system. It does not change how your components work.
+
+[b]1. Add a contract to the scene's root script[/b]
+
+[codeblock lang=gdscript]
+@tool
+class_name StatusDisplay
+extends Control
+
+## Reusable display; reads a data source and shows a caption.
+const COMPONENT_CONTRACT: Dictionary = {
+    "version": 1,
+    "required": [&"data_source"],
+    "optional": [&"caption"],
+}
+
+## Required reference to the source node.
+@export var data_source: Node
+
+## Optional title shown above the status.
+@export var caption: String = "Status"
+
+## Emitted when the display is activated.
+signal activated()
+
+## Clears the displayed value.
+func clear_display() -> void:
+    pass
+[/codeblock]
+
+The contract can be inherited from a base script. [code]class_name[/code] and [code]@tool[/code] are not required for recognition.
+
+The [code]required[/code] and [code]optional[/code] arrays may be empty or omitted. Their entries must refer to existing exported properties. Other exported properties appear under Configuration.
+
+[b]2. Describe the API with Godot ## comments[/b]
+
+Better Tooltips automatically reads exported property names and types, signal signatures and documented public methods.
+
+Use standard Godot [code]##[/code] comments to explain the purpose of the component and its members. Public methods without documentation and methods starting with [code]_[/code] are not listed.
+
+[b]Normal description vs. implementation details[/b]
+
+Write what a scene does in the ordinary [code]##[/code] class description. For architecture decisions, wiring instructions and explanations of why a contract is not needed, use the following [b]exact Godot BBCode block[/b] within that documentation:
+
+[codeblock lang=gdscript]
+## Displays the flight information without handling game input.
+##
+## [color=#888888][i]Implementation notes[/i][br]
+## The scene subscribes to telemetry updates internally.
+## Other scenes must not connect the same signal again.
+## [/color]
+class_name FlightDisplay
+extends Control
+[/codeblock]
+
+The opening marker is [code][lb]color=#888888[rb][lb]i[rb]Implementation notes[lb]/i[rb][lb]br[rb][/code]. End the section with [code][lb]/color[rb][/code]. The [code]##[/code] lines between these markers become the implementation section. Keep the markers complete and properly closed; otherwise Better Tooltips leaves the original BBCode untouched.
+
+[b]How the left rule appears[/b]
+
+Better Tooltips recognizes this block and shows the technical explanation under the normal description with a narrow, muted left rule. The border and text colors are derived from the Godot editor theme. The literal [code]#888888[/code] remains in the source only for compatibility with Godot's native documentation; the add-on does not use that fixed color to style its own popup.
+
+The same section also works without a [code]COMPONENT_CONTRACT[/code], for example when a scene does not need external sources. This is important for reusable scenes that deliberately have no contract.
+
+For a component with a contract, [b]one continuous subtle left rule encloses the entire contract API[/b] — all Required, Optional and Configuration properties, their explanations, emitted signals, public methods and diagnostics. Signatures remain prominent while the explanatory text is muted. The normal class description and any separate Implementation notes stay outside this contract section.
+
+[b]No extra BBCode markers are required for contract details.[/b] Their grouping is automatic, based on [code]COMPONENT_CONTRACT[/code] and script reflection.
+
+The scene root's [code]editor_description[/code] can provide additional instructions, such as how to configure or connect the component.
+
+[b]3. What does the tooltip look like?[/b]
+
+For the example above, Better Tooltips can display a reference similar to this:
+
+[b]Component: StatusDisplay[/b]
+
+Reusable display; reads a data source and shows a caption.
+
+[b]Required[/b] [code]data_source: Node[/code] — Unassigned
+
+The entire contract section, starting at Required and continuing through its methods, has one continuous left rule. Its explanatory text is muted:
+
+Required reference to the source node.
+
+[b]Optional[/b] [code]caption: String[/code] — Status
+
+Optional title shown above the status (inside the same contract section).
+
+[b]Emitted signals[/b]
+
+[code]activated() -> void[/code]
+
+Emitted when the display is activated.
+
+[b]Documented public methods[/b]
+
+[code]clear_display() -> void[/code]
+
+Clears the displayed value.
+
+The actual tooltip uses the add-on's rich-text formatting, including syntax highlighting and scrollable content when necessary.
+
+[b]4. Where do the tooltips appear?[/b]
+
+[b]FileSystem dock[/b]
+
+Hover over a [code].tscn[/code], [code].scn[/code] or [code].gd[/code] resource containing a component contract. The contract must belong to the scene root's script or an inherited base script.
+
+When regular GDScript documentation is enabled, scenes with a documented root script but [b]without[/b] a contract also show their ordinary description and Implementation notes in the FileSystem dock. The tooltip reads saved scene assignments without instantiating the scene.
+
+[b]Scene dock[/b]
+
+Hover over a node whose script declares or inherits a component contract. With this module enabled, the tooltip shows the full API and current Inspector assignments, including unsaved changes. With the standard GDScript documentation module enabled (the default), the Scene dock also shows normal script descriptions and Implementation notes for nodes without a contract.
+
+[b]Scene Dependency Explorer (optional addon)[/b]
+
+If Scene Dependency Explorer is installed, its compact saved-scene entries use the same rich tooltip and Implementation notes formatting. The independent GDScript documentation module displays ordinary class descriptions; enabling this component module adds Required/Optional API information. The explorer reads saved scene files, so unsaved Inspector changes are shown only in Godot's native Scene dock. The explorer itself requires no changes.
+
+Child nodes with their own component contracts are supported here as well.
+
+[b]Important limitations[/b]
+
+The [code]required[/code] designation documents an expected dependency. It does not automatically enforce assignments or generate editor warnings.
+
+Your component remains responsible for its own validation and runtime behavior.
+
+Incoming signal subscriptions and other internal dependencies cannot always be discovered automatically and should be explained in the documentation comments where relevant.
+
+Only scenes and scripts that explicitly declare a supported component contract receive the additional contract API reference. The independent GDScript documentation module can still display ordinary Scene-dock class documentation without a contract.
+
+The feature is disabled by default and can be enabled or disabled independently in Better Tooltips Settings.

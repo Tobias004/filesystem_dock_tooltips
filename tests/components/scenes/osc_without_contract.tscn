@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/components/osc_without_contract.gd" id="1_script"]
+
+[node name="OSCRouter" type="Node"]
+script = ExtResource("1_script")
+editor_description = "OSC routing scene without an explicit contract."

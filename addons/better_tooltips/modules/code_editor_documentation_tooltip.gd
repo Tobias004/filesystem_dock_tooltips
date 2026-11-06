@@ -43,13 +43,14 @@ const HELP_CONTENT_VARIATIONS := [
 	&"EditorHelpBitTooltipContent",
 ]
 const LOCAL_SECTION_NAME := &"BTLocalDocumentation"
+const NATIVE_LIVE_LAYOUT_PENDING := &"_bt_code_native_live_layout_pending"
 const FALLBACK_POPUP_NAME := &"BTProjectClassTooltip"
 const FALLBACK_TIMER_NAME := &"BTProjectClassTooltipTimer"
 const FALLBACK_MIN_WIDTH := 420.0
 const FALLBACK_MAX_WIDTH := 760.0
 const FALLBACK_HORIZONTAL_PADDING := 28.0
 const FALLBACK_NATIVE_GRACE_SECONDS := 0.08
-const FALLBACK_NATIVE_SYMBOL_GRACE_SECONDS := 0.30
+const FALLBACK_NATIVE_SYMBOL_GRACE_SECONDS := 0.85
 const WATCH_REFRESH_TIMER_NAME := &"BTCodeEditorRefreshTimer"
 const WATCH_REFRESH_INTERVAL_SECONDS := 0.15
 const STARTUP_REFRESH_ATTEMPTS := 12
@@ -160,7 +161,7 @@ func _on_editor_window_focus_entered() -> void:
 
 func _on_editor_window_focus_exited() -> void:
 	for editor_id in _watched_editors.keys():
-		_stop_fallback_for_editor(int(editor_id), true)
+		_stop_fallback_for_editor(int(editor_id), true, "cleanup")
 	if _navigation_tooltips != null:
 		_navigation_tooltips.cancel_active_tooltips()
 
@@ -287,6 +288,7 @@ func _watch_code_edit(code_edit: CodeEdit) -> int:
 		"fallback_line": -1,
 		"fallback_resource_path": "",
 		"fallback_context": {},
+		"native_seen_for_hover": false,
 		"popup_reference": null,
 	}
 	return 1
@@ -307,7 +309,7 @@ func _disconnect_watched_editor(editor_id: int) -> void:
 		var exit_callback: Callable = entry.get("exit_callback", Callable())
 		if exit_callback.is_valid() and code_edit.mouse_exited.is_connected(exit_callback):
 			code_edit.mouse_exited.disconnect(exit_callback)
-	_stop_fallback_for_editor(editor_id, true)
+	_stop_fallback_for_editor(editor_id, true, "cleanup")
 	var timer_reference := entry.get("timer_reference", null) as WeakRef
 	var timer := timer_reference.get_ref() as Timer if timer_reference != null else null
 	if is_instance_valid(timer):
@@ -348,13 +350,14 @@ func _on_code_edit_gui_input(event: InputEvent, code_edit: CodeEdit) -> void:
 	var entry: Dictionary = _watched_editors[editor_id]
 	if str(entry.get("hover_key", "")) == hover_key:
 		return
-	_stop_fallback_for_editor(editor_id, true)
+	_stop_fallback_for_editor(editor_id, true, "hover_changed")
 	entry = _watched_editors.get(editor_id, {}) as Dictionary
 	entry["hover_key"] = hover_key
 	entry["fallback_symbol"] = ""
 	entry["fallback_line"] = -1
 	entry["fallback_resource_path"] = ""
 	entry["fallback_context"] = {}
+	entry["native_seen_for_hover"] = false
 	_watched_editors[editor_id] = entry
 	var class_entry := _find_project_class_by_name(symbol) if not symbol.is_empty() else {}
 	var resource_path := _resolve_local_resource_path(code_edit, context) if not context.is_empty() else ""
@@ -398,7 +401,7 @@ func _on_code_edit_mouse_exited(code_edit: CodeEdit) -> void:
 	if is_instance_valid(popup) and _fallback_lifetime != null and _fallback_lifetime.has_popup(popup):
 		_stop_fallback_timer_for_editor(editor_id)
 		return
-	_stop_fallback_for_editor(editor_id, true)
+	_stop_fallback_for_editor(editor_id, true, "mouse_exit")
 
 func _on_fallback_timer_timeout(code_edit: CodeEdit) -> void:
 	if not is_instance_valid(code_edit):
@@ -437,6 +440,10 @@ func _try_show_code_fallback(code_edit_reference: WeakRef) -> void:
 		not expected_special.is_empty()
 		and str(current_special.get("key", "")) != str(expected_special.get("key", ""))
 	):
+		return
+	# A native help bit may have been freed/recreated during layout. Once it
+	# appeared for this hover, never race it with our separate fallback.
+	if bool(entry.get("native_seen_for_hover", false)):
 		return
 	if _has_visible_native_tooltip(code_edit):
 		return
@@ -617,6 +624,10 @@ func _show_code_fallback(
 			popup,
 			{
 				"source": "code_editor",
+				"bt_code_editor_host": "fallback",
+				# This PopupPanel is already owned by the Code Editor fallback.
+				# The live preview must not reparent its contents into another window.
+				"host_manages_popup": true,
 				"trigger_control": code_edit,
 			}
 		)
@@ -670,7 +681,7 @@ func _on_fallback_lifetime_expired(editor_id: int, popup_id: int) -> void:
 	var reference := entry.get("popup_reference", null) as WeakRef
 	var popup := reference.get_ref() as PopupPanel if reference != null else null
 	if is_instance_valid(popup) and popup.get_instance_id() == popup_id:
-		_stop_fallback_for_editor(editor_id, true)
+		_stop_fallback_for_editor(editor_id, true, "lifetime_expired")
 
 func _calculate_fallback_width(
 	documentation: Dictionary,
@@ -735,7 +746,7 @@ func _stop_fallback_timer_for_editor(editor_id: int) -> void:
 # Closes only the visible add-on popup while preserving the current hover state.
 # This is used during native-tooltip handoff so the fallback can remain visible
 # until Godot's help-bit controls have actually been populated.
-func _close_fallback_popup_for_editor(editor_id: int) -> void:
+func _close_fallback_popup_for_editor(editor_id: int, reason: String = "hover_end") -> void:
 	if not _watched_editors.has(editor_id):
 		return
 	var entry: Dictionary = _watched_editors[editor_id]
@@ -752,7 +763,7 @@ func _close_fallback_popup_for_editor(editor_id: int) -> void:
 	_watched_editors[editor_id] = entry
 
 # Stops a pending class/resource fallback and optionally closes an already visible one.
-func _stop_fallback_for_editor(editor_id: int, close_popup: bool) -> void:
+func _stop_fallback_for_editor(editor_id: int, close_popup: bool, reason: String = "hover_end") -> void:
 	if not _watched_editors.has(editor_id):
 		return
 	var entry: Dictionary = _watched_editors[editor_id]
@@ -760,7 +771,7 @@ func _stop_fallback_for_editor(editor_id: int, close_popup: bool) -> void:
 	if timer != null:
 		timer.stop()
 	if close_popup:
-		_close_fallback_popup_for_editor(editor_id)
+		_close_fallback_popup_for_editor(editor_id, reason)
 		entry = _watched_editors.get(editor_id, {}) as Dictionary
 	entry["hover_key"] = ""
 	entry["fallback_symbol"] = ""
@@ -783,10 +794,14 @@ func _on_code_edit_child_entered(node: Node, code_edit: CodeEdit) -> void:
 		return
 	if _find_native_help_controls(popup).is_empty():
 		return
-	# Stop a pending fallback immediately, but keep both the current hover identity
-	# and an already visible popup until the deferred pass sees Godot's populated
-	# help controls. This avoids both re-arming and a blank/replacement flash.
-	_stop_fallback_timer_for_editor(code_edit.get_instance_id())
+	var editor_id := code_edit.get_instance_id()
+	# Once Godot begins creating a native help bit for this hover, the fallback
+	# must not compete even if Godot replaces that window during layout.
+	var entry: Dictionary = _watched_editors.get(editor_id, {}) as Dictionary
+	if not entry.is_empty():
+		entry["native_seen_for_hover"] = true
+		_watched_editors[editor_id] = entry
+	_stop_fallback_timer_for_editor(editor_id)
 	call_deferred(
 		"_finish_native_tooltip",
 		weakref(popup),
@@ -811,7 +826,7 @@ func _finish_native_tooltip(
 		return
 	# At this point Godot's native help-bit structure exists after the deferred
 	# population pass, so it can replace any add-on fallback without a blank gap.
-	_close_fallback_popup_for_editor(code_edit.get_instance_id())
+	_close_fallback_popup_for_editor(code_edit.get_instance_id(), "native_handoff")
 	var native_title := help_controls["title"] as RichTextLabel
 	var native_content := help_controls["content"] as RichTextLabel
 	_apply_native_font_scale(native_title)
@@ -867,15 +882,11 @@ func _finish_native_tooltip(
 		hover_context
 	)
 	if _preview_pipeline != null and not resource_reference.is_empty():
-		changed = _preview_pipeline.append_preview_for_path(
+		changed = _append_native_resource_preview(
 			str(resource_reference.get("path", "")),
 			help_controls["container"] as VBoxContainer,
-			popup,
-			{
-				"source": "code_editor",
-				"symbol": str(hover_context.get("symbol", "")),
-				"trigger_control": code_edit,
-			}
+			popup, native_content, code_edit, "code_editor",
+			str(hover_context.get("symbol", ""))
 		) or changed
 	var pointer_context := _get_pointer_context(code_edit)
 	var special_context := _resolve_special_hover(code_edit, pointer_context)
@@ -887,22 +898,78 @@ func _finish_native_tooltip(
 		)
 		var special_resource_path := str(special_context.get("resource_path", ""))
 		if _preview_pipeline != null and not special_resource_path.is_empty():
-			changed = _preview_pipeline.append_preview_for_path(
+			changed = _append_native_resource_preview(
 				special_resource_path,
 				help_controls["container"] as VBoxContainer,
-				popup,
-				{
-					"source": "code_editor_literal",
-					"trigger_control": code_edit,
-				}
+				popup, native_content, code_edit, "code_editor_literal"
 			) or changed
 		changed = true
-	if changed:
-		popup.reset_size()
-	# Even an unmodified Godot help bit can be much taller than the screen
-	# (e.g. a Camera2D engine-class description). Limit its native text and
-	# reposition after Godot and the injected sections have finished layout.
-	_schedule_native_tooltip_fit(popup, native_content)
+	# Do not resize the native window while the live source preview is still
+	# measuring. Its completion callback performs the single final fit.
+	if not popup.has_meta(NATIVE_LIVE_LAYOUT_PENDING):
+		_schedule_native_tooltip_fit(popup, native_content)
+
+# Source/Markdown previews complete their RichText layout asynchronously. The
+# pipeline's ready callback lets this native help bit be fitted just once,
+# rather than resetting it on each intermediate content-size change.
+func _append_native_resource_preview(
+	path: String,
+	base: VBoxContainer,
+	popup: PopupPanel,
+	content: RichTextLabel,
+	code_edit: CodeEdit,
+	source: String,
+	symbol: String = ""
+) -> bool:
+	if _preview_pipeline == null:
+		return false
+	var live_modules := _preview_pipeline.count_live_text_preview_modules(path)
+	var live := live_modules > 0
+	var metadata := {
+		"source": source,
+		"bt_code_editor_host": "native",
+		"host_manages_popup": true,
+		"trigger_control": code_edit,
+	}
+	if not symbol.is_empty():
+		metadata["symbol"] = symbol
+	if live:
+		var pending: Dictionary = popup.get_meta(
+			NATIVE_LIVE_LAYOUT_PENDING, {}
+		)
+		if not pending.has(path):
+			pending[path] = live_modules
+			popup.set_meta(NATIVE_LIVE_LAYOUT_PENDING, pending)
+			metadata["layout_ready_callback"] = Callable(
+				self, "_on_native_live_preview_ready"
+			).bind(weakref(popup), weakref(content), path)
+	var appended := _preview_pipeline.append_preview_for_path(
+		path, base, popup, metadata
+	)
+	if not appended and live:
+		_on_native_live_preview_ready(weakref(popup), weakref(content), path)
+	return appended
+
+func _on_native_live_preview_ready(
+	popup_ref: WeakRef, content_ref: WeakRef, path: String
+) -> void:
+	var popup := popup_ref.get_ref() as PopupPanel if popup_ref != null else null
+	var content := content_ref.get_ref() as RichTextLabel if content_ref != null else null
+	if not is_instance_valid(popup) or not is_instance_valid(content):
+		return
+	var pending: Dictionary = popup.get_meta(NATIVE_LIVE_LAYOUT_PENDING, {})
+	if not pending.has(path):
+		return
+	var remaining := int(pending[path]) - 1
+	if remaining > 0:
+		pending[path] = remaining
+	else:
+		pending.erase(path)
+	if not pending.is_empty():
+		popup.set_meta(NATIVE_LIVE_LAYOUT_PENDING, pending)
+		return
+	popup.remove_meta(NATIVE_LIVE_LAYOUT_PENDING)
+	_schedule_native_tooltip_fit(popup, content)
 
 # Godot creates the Code Editor help bits itself. Apply the same text-only
 # scaling to its theme fonts without changing its markup, images or logic.
@@ -942,10 +1009,12 @@ func _fit_native_tooltip_after_layout(popup_ref: WeakRef, content_ref: WeakRef) 
 	var margin := roundi(8.0 * EditorInterface.get_editor_scale())
 	var max_x := maxi(usable.position.x + margin, usable.end.x - popup.size.x - margin)
 	var max_y := maxi(usable.position.y + margin, usable.end.y - popup.size.y - margin)
-	popup.position = Vector2i(
+	var clamped_position := Vector2i(
 		clampi(popup.position.x, usable.position.x + margin, max_x),
 		clampi(popup.position.y, usable.position.y + margin, max_y)
 	)
+	if clamped_position != popup.position:
+		popup.position = clamped_position
 
 # Resolves one hovered variable/constant to a literal preload()/load() path. The
 # current unsaved script is preferred for local/unqualified symbols; if Godot's
@@ -1834,6 +1903,13 @@ func _native_contains_same_local_documentation(
 		var renderer: BTDocumentationRenderer = _get_renderer()
 		var expected := _normalize_comparison_text(renderer.to_plain_text(description))
 		if not expected.is_empty() and native_text.contains(expected):
+			return true
+	var notes := str(documentation.get("implementation_notes", ""))
+	if not notes.is_empty():
+		var notes_plain := _normalize_comparison_text(_get_renderer().to_plain_text(notes))
+		# A class may consist only of architecture notes; don't append an
+		# add-on copy under the already-matching native project documentation.
+		if not notes_plain.is_empty() and native_text.contains(notes_plain):
 			return true
 	# Godot may enrich references while rendering (for example by appending ()
 	# to method names), which makes exact plain-text comparison differ even for

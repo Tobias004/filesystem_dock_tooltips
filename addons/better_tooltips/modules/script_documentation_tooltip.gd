@@ -2,9 +2,9 @@
 class_name BTScriptDocumentationTooltip
 extends EditorResourceTooltipPlugin
 
-## GDScript class-documentation tooltip module.
-## Adds [code]class_name[/code] and script-level [code]##[/code] documentation
-## to Godot's standard FileSystem tooltip. Formatting is delegated to
+## GDScript file-documentation tooltip module.
+## Adds script-level [code]##[/code] documentation with or without
+## [code]class_name[/code] to Godot's FileSystem tooltip. Formatting is delegated to
 ## [BTDocumentationRenderer], which mirrors Godot's EditorHelp presentation
 ## and is shared with the add-on's built-in documentation dialog.
 
@@ -12,43 +12,56 @@ extends EditorResourceTooltipPlugin
 const DocumentationRenderer := preload(
 	"res://addons/better_tooltips/core/documentation_renderer.gd"
 )
+const DocumentationParser := preload("res://addons/better_tooltips/core/gdscript_documentation_parser.gd")
 const TooltipAppearance := preload(
 	"res://addons/better_tooltips/core/tooltip_appearance.gd"
 )
 const TextPreviewRenderer := preload(
 	"res://addons/better_tooltips/core/text_preview_renderer.gd"
 )
+const ComponentReader := preload("res://addons/better_tooltips/core/component_documentation.gd")
+const Settings := preload("res://addons/better_tooltips/tooltip_settings.gd")
 
 const MIN_TOOLTIP_WIDTH := 420.0
 const MAX_TOOLTIP_WIDTH := 760.0
 const TOOLTIP_HORIZONTAL_PADDING := 28.0
-const CLASS_NAME_KEYWORD := "class_name"
 
 var _renderer: BTDocumentationRenderer = null
 
-# Restricts this module to GDScript resources. The file extension is checked
-# again while building the tooltip to avoid modifying unexpected resource paths.
+# Scene root scripts use the same GDScript documentation pipeline as .gd files.
+# The component module is independent and remains opt-in.
 func _handles(type: String) -> bool:
-	return type == "GDScript"
+	return type in ["GDScript", "PackedScene"]
 
 # Keep source text live and scrollable even without a documented class. The
 # central pipeline owns the popup and keyboard behavior for all text previews.
 func is_live_preview() -> bool:
 	return true
 
-# A documented class is shown first, followed by its source. Scripts without a
-# class_name or class documentation still get a source preview.
+# Script documentation appears above its source, even without class_name.
+# Undocumented scripts still get their source preview.
 func _make_tooltip_for_path(
 	path: String,
-	_metadata: Dictionary,
+	metadata: Dictionary,
 	base: Control
 ) -> Control:
-	if not path.ends_with(".gd"):
+	var is_script := path.ends_with(".gd")
+	var is_scene := path.get_extension().to_lower() in ["tscn", "scn"]
+	if not is_script and not is_scene:
 		return base
-	var preview := TextPreviewRenderer.create_plain_preview(path, {})
-	if preview == null:
-		return base
-	var documentation := _read_script_documentation(path)
+	var documentation: Dictionary = {}
+	if is_scene:
+		# The standard module supplies class documentation for scene root scripts,
+		# even without a contract. An enabled component module owns contracted
+		# scene references, so the description is never displayed twice.
+		var contracts_enabled := Settings.is_module_enabled(Settings.MODULE_COMPONENT_DOCUMENTATION)
+		documentation = ComponentReader.for_path(path, true, contracts_enabled)
+		if contracts_enabled and bool(documentation.get("has_contract", false)):
+			return base
+		if not documentation.is_empty():
+			documentation["class_name"] = str(documentation.get("title", path.get_file()))
+	else:
+		documentation = _read_script_documentation(path)
 	if not documentation.is_empty():
 		var renderer := _get_renderer()
 		renderer.refresh_theme()
@@ -79,256 +92,31 @@ func _make_tooltip_for_path(
 			false
 		)
 		TooltipAppearance.limit_rich_text_height(description_label)
-		base.add_child(HSeparator.new())
-	base.add_child(preview)
+	if is_script:
+		# Existing source preview behavior is unchanged for .gd resources.
+		var preview := TextPreviewRenderer.create_plain_preview(path, metadata)
+		if preview != null:
+			if not documentation.is_empty():
+				base.add_child(HSeparator.new())
+			base.add_child(preview)
 	return base
 
 # Releases the shared renderer when Godot unregisters this tooltip module.
 func cleanup() -> void:
 	_renderer = null
 
-# Reads a script and extracts the class_name together with its script-level
-# documentation. Godot's documented placement after class_name/extends is
-# preferred, while documentation directly before class_name remains supported.
+# Reuses the same script-level documentation lookup as the Scene dock and
+# component reader. A registered class_name is only a display title, not a
+# prerequisite for documentation; unnamed scripts use their filename instead.
 func _read_script_documentation(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return {}
-	var source := file.get_as_text()
-	if source.begins_with("\uFEFF"):
-		source = source.trim_prefix("\uFEFF")
-	var lines := source.split("\n")
-	var class_data := _find_class_name(lines)
-	if class_data.is_empty():
+	var document := DocumentationParser.find_script_documentation(file.get_as_text())
+	if document.is_empty():
 		return {}
-	var class_line: int = class_data["line"]
-	var documentation_lines := _find_documentation_after_header(lines, class_line)
-	# Godot's documented style places script documentation after class_name and
-	# extends. Documentation directly above class_name remains a compatibility
-	# fallback for projects authored against older versions of this add-on.
-	if documentation_lines.is_empty():
-		documentation_lines = _find_documentation_before_class_name(
-			lines,
-			class_line
-		)
-	var documentation := _parse_documentation(documentation_lines)
-	if not _has_renderable_documentation(documentation):
-		return {}
-	documentation["class_name"] = class_data["name"]
-	return documentation
-
-# Finds the first valid class_name declaration and returns both its source line
-# and declared name. Inline comments after the name are ignored.
-func _find_class_name(lines: PackedStringArray) -> Dictionary:
-	for index in range(lines.size()):
-		var stripped := lines[index].strip_edges()
-		if not _starts_with_keyword(stripped, CLASS_NAME_KEYWORD):
-			continue
-		var remainder := stripped.trim_prefix(CLASS_NAME_KEYWORD).strip_edges()
-		if remainder.is_empty():
-			continue
-		var normalized := remainder.replace("\t", " ")
-		var tokens := normalized.split(" ", false)
-		if tokens.is_empty():
-			continue
-		var script_class_name: String = tokens[0]
-		var comment_position := script_class_name.find("#")
-		if comment_position >= 0:
-			script_class_name = script_class_name.left(comment_position)
-		if not script_class_name.is_empty():
-			return {
-				"line": index,
-				"name": script_class_name,
-			}
-	return {}
-
-# Locates a documentation block after class_name while skipping annotations,
-# blank lines and the extends statement that may form the script header.
-func _find_documentation_after_header(
-	lines: PackedStringArray,
-	class_line: int
-) -> PackedStringArray:
-	var index := class_line + 1
-	while index < lines.size():
-		var stripped := lines[index].strip_edges()
-		if stripped.is_empty() or stripped.begins_with("@"):
-			index += 1
-			continue
-		if _starts_with_keyword(stripped, "extends"):
-			index += 1
-			continue
-		break
-	return _collect_documentation_block(lines, index, 1)
-
-# Locates the fallback documentation block before class_name. Script annotations
-# and blank lines between documentation and class_name are skipped.
-func _find_documentation_before_class_name(
-	lines: PackedStringArray,
-	class_line: int
-) -> PackedStringArray:
-	var index := class_line - 1
-	while index >= 0:
-		var stripped := lines[index].strip_edges()
-		if stripped.is_empty() or stripped.begins_with("@"):
-			index -= 1
-			continue
-		break
-	return _collect_documentation_block(lines, index, -1)
-
-# Collects one contiguous ## block in the requested direction while preserving
-# the original top-to-bottom source order in the returned array.
-func _collect_documentation_block(
-	lines: PackedStringArray,
-	start_index: int,
-	direction: int
-) -> PackedStringArray:
-	var result := PackedStringArray()
-	var index := start_index
-	while index >= 0 and index < lines.size():
-		var line := lines[index]
-		if not _is_documentation_comment(line):
-			break
-		if direction > 0:
-			result.append(line)
-		else:
-			result.insert(0, line)
-		index += direction
-	return result
-
-# Parses one ## documentation block into display text plus Godot's line-level
-# @tutorial, @deprecated and @experimental metadata. Those keys intentionally
-# match what future member-documentation consumers need as well.
-func _parse_documentation(lines: PackedStringArray) -> Dictionary:
-	var documentation := {
-		"description": "",
-		"tutorials": [],
-		"is_deprecated": false,
-		"deprecated": "",
-		"is_experimental": false,
-		"experimental": "",
-	}
-	if lines.is_empty():
-		return documentation
-	var description_lines := PackedStringArray()
-	var in_codeblock := false
-	for source_line in lines:
-		var line := _remove_documentation_prefix(source_line)
-		var stripped := line.strip_edges()
-		if not in_codeblock:
-			if stripped.begins_with("[codeblock"):
-				in_codeblock = true
-			elif _parse_special_tag(stripped, documentation):
-				continue
-		description_lines.append(line)
-		if in_codeblock and stripped == "[/codeblock]":
-			in_codeblock = false
-	documentation["description"] = _normalize_description(description_lines)
-	return documentation
-
-# Extracts one valid line-level documentation tag. Invalid spellings are left in
-# the description instead of being silently consumed.
-func _parse_special_tag(line: String, documentation: Dictionary) -> bool:
-	if line == "@deprecated":
-		documentation["is_deprecated"] = true
-		return true
-	if line.begins_with("@deprecated:"):
-		documentation["is_deprecated"] = true
-		documentation["deprecated"] = line.substr(12).strip_edges()
-		return true
-	if line == "@experimental":
-		documentation["is_experimental"] = true
-		return true
-	if line.begins_with("@experimental:"):
-		documentation["is_experimental"] = true
-		documentation["experimental"] = line.substr(14).strip_edges()
-		return true
-	if line.begins_with("@tutorial:"):
-		var tutorial_url := line.substr(10).strip_edges()
-		if tutorial_url.is_empty():
-			return false
-		(documentation["tutorials"] as Array).append({
-			"title": "",
-			"url": tutorial_url,
-		})
-		return true
-	if line.begins_with("@tutorial("):
-		var separator := line.find("):")
-		if separator < 10:
-			return false
-		var tutorial_title := line.substr(10, separator - 10).strip_edges()
-		var tutorial_url := line.substr(separator + 2).strip_edges()
-		if tutorial_url.is_empty():
-			return false
-		(documentation["tutorials"] as Array).append({
-			"title": tutorial_title,
-			"url": tutorial_url,
-		})
-		return true
-	return false
-
-# Normalizes ordinary documentation like Godot does: wrapped source lines are
-# joined with spaces, blank ## lines separate paragraphs, [br] keeps an explicit
-# line break, and codeblock contents retain their source line structure. A
-# paragraph break is represented by one LF; EditorHelp's paragraph_separation
-# theme value supplies the visual spacing, so an extra empty line would double it.
-func _normalize_description(lines: PackedStringArray) -> String:
-	var output := PackedStringArray()
-	var paragraph := PackedStringArray()
-	var in_codeblock := false
-	for line in lines:
-		var stripped := line.strip_edges()
-		if in_codeblock:
-			output.append(line)
-			if stripped == "[/codeblock]":
-				in_codeblock = false
-			continue
-		if stripped.begins_with("[codeblock"):
-			_flush_paragraph(output, paragraph)
-			output.append(stripped)
-			in_codeblock = true
-			continue
-		if stripped.is_empty():
-			_flush_paragraph(output, paragraph)
-			continue
-		paragraph.append(stripped)
-	_flush_paragraph(output, paragraph)
-	return "\n".join(output)
-
-# Flushes one ordinary paragraph using a single separating space, matching
-# GDScript's generated class documentation behavior.
-func _flush_paragraph(
-	output: PackedStringArray,
-	paragraph: PackedStringArray
-) -> void:
-	if paragraph.is_empty():
-		return
-	output.append(" ".join(paragraph))
-	paragraph.clear()
-
-# Removes indentation before ##, the marker itself and at most one conventional
-# space after it while preserving codeblock indentation after that first space.
-func _remove_documentation_prefix(line: String) -> String:
-	var content := line.strip_edges(true, false)
-	if not content.begins_with("##"):
-		return line.trim_suffix("\r")
-	content = content.substr(2)
-	if content.begins_with(" "):
-		content = content.substr(1)
-	return content.trim_suffix("\r")
-
-# Returns whether a source line is a GDScript documentation comment after
-# ignoring indentation before the comment marker.
-func _is_documentation_comment(line: String) -> bool:
-	return line.strip_edges(true, false).begins_with("##")
-
-# Checks whether the parsed block has any content worth appending to a tooltip.
-func _has_renderable_documentation(documentation: Dictionary) -> bool:
-	return (
-		not str(documentation.get("description", "")).strip_edges().is_empty()
-		or bool(documentation.get("is_deprecated", false))
-		or bool(documentation.get("is_experimental", false))
-		or not (documentation.get("tutorials", []) as Array).is_empty()
-	)
+	document["class_name"] = str(document.get("member_name", path.get_file()))
+	return document
 
 # Chooses a readable tooltip width from visible documentation text while using
 # EditorHelp's document font and respecting the current editor-window width.
@@ -370,13 +158,3 @@ func _get_renderer() -> BTDocumentationRenderer:
 		_renderer = DocumentationRenderer.new() as BTDocumentationRenderer
 		_renderer.refresh_theme()
 	return _renderer
-
-# Checks a keyword at the start of a stripped source line without accepting
-# longer identifiers that only share the same prefix.
-func _starts_with_keyword(line: String, keyword: String) -> bool:
-	if not line.begins_with(keyword):
-		return false
-	if line.length() == keyword.length():
-		return true
-	var next_character := line.substr(keyword.length(), 1)
-	return next_character == " " or next_character == "\t"
